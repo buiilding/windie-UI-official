@@ -104,4 +104,4 @@ function ChatScreen() {
     </div>
   </>;
 }
-export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px', '--sidebar-width-icon': '72px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }
+export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px', '--sidebar-width-icon': '48px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }

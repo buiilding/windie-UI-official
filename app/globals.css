@@ -39,10 +39,10 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .sidebar-header { display: flex; align-items: center; height: 49px; padding: 0 20px 0 15px; gap: 6px; flex-shrink: 0; }
 .brand-toggle { position: relative; border: 0; background: transparent; display: inline-flex; align-items: center; justify-content: center; width: 29px; height: 32px; padding: 0; border-radius: 7px; flex-shrink: 0; }
 .brand-toggle:hover { background: #37332d; }
-.brand-toggle svg { width: 21px; height: 21px; stroke-width: 1.65; }
+.brand-toggle svg { width: 20px; height: 20px; stroke-width: 1.65; }
 .brand-toggle-icon { display: none; }
 .sidebar-expanded .brand-toggle { display: none; }
-.sidebar-collapsed .sidebar-header { height: 70px; justify-content: center; padding: 0; }
+.sidebar-collapsed .sidebar-header { height: 64px; justify-content: center; padding: 0; }
 .sidebar-collapsed .brand-toggle { width: 48px; height: 48px; border-radius: 10px; }
 .sidebar-collapsed:hover .brand-logo { display: none; }
 .sidebar-collapsed:hover .brand-toggle-icon { display: block; }
@@ -53,10 +53,10 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 7px 19px 20px 5px; }
 .sidebar-rail-actions { display: none; }
 .sidebar-collapsed .sidebar-expanded-content { display: none; }
-.sidebar-collapsed .sidebar-rail-actions { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 0; }
-.icon-rail-button { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 40px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--foreground); }
+.sidebar-collapsed .sidebar-rail-actions { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 2px; padding: 0; }
+.icon-rail-button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 32px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--foreground); }
 .icon-rail-button:hover { background: #37332d; }
-.icon-rail-button svg { width: 21px; height: 21px; stroke-width: 1.65; }
+.icon-rail-button svg { width: 20px; height: 20px; stroke-width: 1.65; }
 .navigation { display: flex; flex-direction: column; gap: 1px; }
 .nav-item { display: flex; align-items: center; gap: 9px; width: 100%; height: 33px; background: transparent; border: 0; border-radius: 11px; padding: 0 10px; font-size: 14px; text-align: left; }
 .nav-item.selected { background: linear-gradient(110deg,#343028,#2c2925); }
@@ -96,7 +96,7 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .right-sidebar-item span { flex: 1; }
 .right-sidebar-item kbd { padding: 2px 7px; border: 1px solid #4a433b; border-radius: 6px; background: #403a31; color: #d7d0c5; font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 17px; white-space: nowrap; }
 .reopen-sidebar { position: absolute; left: 15px; top: 10px; }
-.prompt-area { position: absolute; top: 35.35svh; left: 50%; transform: translateX(-50%); width: min(712px, calc(100% - 64px)); }
+.prompt-area { position: absolute; top: 30svh; left: 50%; transform: translateX(-50%); width: min(712px, calc(100% - 64px)); }
 .prompt-area h1 { font-size: 22px; font-weight: 400; line-height: 30px; text-align: center; letter-spacing: .05px; margin: 0 0 29px; }
 .composer { display: flex; align-items: flex-end; gap: 10px; min-height: 60px; max-height: 420px; padding: 12px 10px 12px 12px; border: 1px solid #4a433b; border-radius: 18px; background: #2c2925; transition: min-height 180ms ease; }
 .composer.is-expanded { min-height: min(calc(60px * var(--composer-steps)), 420px); }
@@ -114,7 +114,7 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .voice-button svg { width: 20px; height: 20px; stroke-width: 1.6; }
 .voice-button:hover { filter: brightness(1.12); }
 @media (max-width: 767px) {
-  .prompt-area { top: 35svh; width: calc(100% - 32px); max-width: 560px; }
+  .prompt-area { top: 30svh; width: calc(100% - 32px); max-width: 560px; }
   .prompt-area h1 { font-size: 22px; margin-bottom: 25px; }
   .composer { gap: 5px; }
   .voice-button { margin-left: 0; }
