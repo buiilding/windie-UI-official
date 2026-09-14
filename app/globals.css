@@ -95,7 +95,7 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .right-sidebar-item svg { width: 17px; height: 17px; color: #b8b0a4; stroke-width: 1.6; }
 .right-sidebar-item span { flex: 1; }
 .right-sidebar-item kbd { padding: 2px 7px; border: 1px solid #4a433b; border-radius: 6px; background: #403a31; color: #d7d0c5; font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 17px; white-space: nowrap; }
-.reopen-sidebar { position: fixed; left: 15px; top: 11px; z-index: 30; width: 31px; height: 34px; }
+.reopen-sidebar { position: fixed; left: 15px; top: 11px; z-index: 5; width: 31px; height: 34px; }
 .reopen-sidebar svg { width: 20px; height: 20px; }
 .prompt-area { position: absolute; top: 25svh; left: 50%; transform: translateX(-50%); width: min(712px, calc(100% - 64px)); }
 .prompt-area h1 { font-size: 22px; font-weight: 400; line-height: 30px; text-align: center; letter-spacing: .05px; margin: 0 0 29px; }
