@@ -56,7 +56,7 @@ function ChatScreen() {
         </section>
       </div>
       <footer className="profile-footer">
-        <button className="profile" aria-label="g p, Free account" aria-disabled="true" title="Account — design preview"><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small className="font-mono">Free</small></span></button>
+        <button className="profile" aria-label="g p, Free account" aria-disabled="true" title={open ? 'Account — design preview' : undefined}><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small className="font-mono">Free</small></span></button>
         <button className="icon-button" aria-label="Gifts" aria-disabled="true" title="Gifts — design preview"><Gift /></button>
       </footer>
     </Sidebar>
