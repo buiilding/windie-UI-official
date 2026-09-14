@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Bell, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift, ClipboardCheck, TerminalSquare, Globe2, Files, MessageCircle } from 'lucide-react';
+import { Bell, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift, ClipboardCheck, TerminalSquare, Globe2, Files, MessageCircle, Bot } from 'lucide-react';
 import { Sidebar, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -15,6 +15,7 @@ function ChatScreen() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   function newChat() { setDraft(''); setSearch(''); setSearching(false); inputRef.current?.focus(); }
+  function openSearch() { setSearching(true); if (!open) toggleSidebar(); }
   useEffect(() => {
     if (!rightPanelOpen) return;
     function handleEscape(event: KeyboardEvent) {
@@ -24,13 +25,14 @@ function ChatScreen() {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [rightPanelOpen]);
   return <>
-    <Sidebar className="reference-sidebar">
+    <Sidebar className={`reference-sidebar ${open ? 'sidebar-expanded' : 'sidebar-collapsed'}`} collapsible="icon">
       <header className="sidebar-header">
+        <button className="brand-toggle" aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'} onClick={toggleSidebar} title={open ? 'Collapse sidebar' : 'Expand sidebar'}><Bot className="brand-logo" /><PanelLeft className="brand-toggle-icon" /></button>
         <span className="wordmark">ChatGPT</span>
-        <button className="icon-button" aria-label="Search recent chats" aria-expanded={searching} onClick={() => setSearching(!searching)} title="Search chats"><Search /></button>
-        <button className="icon-button" aria-label="Close sidebar" onClick={toggleSidebar} title="Close sidebar"><PanelLeft /></button>
+        <button className="icon-button sidebar-search expanded-only" aria-label="Search recent chats" aria-expanded={searching} onClick={() => setSearching(!searching)} title="Search chats"><Search /></button>
+        <button className="icon-button expanded-only" aria-label="Collapse sidebar" onClick={toggleSidebar} title="Collapse sidebar"><PanelLeft /></button>
       </header>
-      <div className="sidebar-scroll">
+      <div className="sidebar-scroll sidebar-expanded-content">
         <nav aria-label="Main navigation" className="navigation">
           <button className="nav-item selected" onClick={newChat}><DiamondPlus /><span>New chat</span></button>
           <button className="nav-item" aria-disabled="true" title="Wakeups — design preview"><Bell /><span>Wakeups</span></button>
@@ -44,6 +46,12 @@ function ChatScreen() {
           {searching && !recents.some(label => label.toLowerCase().includes(search.toLowerCase())) && <p className="no-results">No chats found</p>}
         </section>
       </div>
+      <nav className="sidebar-rail-actions" aria-label="Sidebar shortcuts">
+        <button className="icon-rail-button" aria-label="New chat" onClick={newChat} title="New chat"><DiamondPlus /></button>
+        <button className="icon-rail-button" aria-label="Computers" aria-disabled="true" title="Computers — design preview"><Monitor /></button>
+        <button className="icon-rail-button" aria-label="Search recent chats" aria-expanded={searching} onClick={openSearch} title="Search chats"><Search /></button>
+        <button className="icon-rail-button" aria-label="Chats" aria-disabled="true" title="Chats — design preview"><MessageCircle /></button>
+      </nav>
       <footer className="profile-footer">
         <button className="profile" aria-label="g p, Free account" aria-disabled="true" title="Account — design preview"><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small className="font-mono">Free</small></span></button>
         <button className="icon-button" aria-label="Gifts" aria-disabled="true" title="Gifts — design preview"><Gift /></button>
@@ -55,7 +63,7 @@ function ChatScreen() {
       </header>
       <div className="workspace-body">
         <main className="chat-canvas">
-          {(!open || isMobile) && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
+          {isMobile && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
           <section className="prompt-area" aria-labelledby="prompt-heading">
             <h1 id="prompt-heading">What’s on your mind today?</h1>
             <div className="composer">
@@ -86,4 +94,4 @@ function ChatScreen() {
     </div>
   </>;
 }
-export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }
+export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px', '--sidebar-width-icon': '72px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }
