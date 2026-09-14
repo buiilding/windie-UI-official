@@ -14,6 +14,7 @@ function ChatScreen() {
   const [search, setSearch] = useState('');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isMultiline = draft.includes('\n');
   function newChat() { setDraft(''); setSearch(''); setSearching(false); inputRef.current?.focus(); }
   useEffect(() => {
     if (!rightPanelOpen) return;
@@ -68,7 +69,7 @@ function ChatScreen() {
           {isMobile && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
           <section className="prompt-area" aria-labelledby="prompt-heading">
             <h1 id="prompt-heading">What’s on your mind today?</h1>
-            <div className="composer">
+            <div className={`composer ${isMultiline ? 'is-multiline' : ''}`}>
               <button className="icon-button attachment-button" aria-label="Add attachment" aria-disabled="true" title="Attachments — design preview"><Plus /></button>
               <textarea ref={inputRef} rows={1} aria-label="Ask Windie" aria-describedby="preview-description" placeholder="Ask Windie" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) e.preventDefault(); }} />
               <Select defaultValue="High">
@@ -96,4 +97,4 @@ function ChatScreen() {
     </div>
   </>;
 }
-export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px', '--sidebar-width-icon': '48px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }
+export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px', '--sidebar-width-icon': '52px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }

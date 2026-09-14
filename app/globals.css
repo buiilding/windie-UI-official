@@ -98,6 +98,10 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .prompt-area { position: absolute; top: 25svh; left: 50%; transform: translateX(-50%); width: min(712px, calc(100% - 64px)); }
 .prompt-area h1 { font-size: 22px; font-weight: 400; line-height: 30px; text-align: center; letter-spacing: .05px; margin: 0 0 29px; }
 .composer { display: flex; align-items: flex-end; gap: 10px; min-height: 60px; max-height: 420px; padding: 12px 10px 12px 12px; border: 1px solid #4a433b; border-radius: 18px; background: #2c2925; transition: min-height 180ms ease; }
+.composer.is-multiline { flex-wrap: wrap; row-gap: 10px; }
+.composer.is-multiline textarea { order: 1; flex: 0 0 100%; width: 100%; padding-left: 7px; }
+.composer.is-multiline .attachment-button, .composer.is-multiline .effort-select, .composer.is-multiline .voice-button { order: 2; }
+.composer.is-multiline .effort-select { margin-left: auto; }
 .composer:focus-within { border-color: #4a433b; box-shadow: none; }
 .attachment-button { width: 34px; height: 34px; border-radius: 50%; }
 .attachment-button svg { width: 23px; height: 23px; }
