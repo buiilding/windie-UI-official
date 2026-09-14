@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState, type CSSProperties } from 'react';
-import { Bell, Monitor, UsersRound, SquarePen, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift } from 'lucide-react';
+import { Bell, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift } from 'lucide-react';
 import { Sidebar, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -23,7 +23,7 @@ function ChatScreen() {
       </header>
       <div className="sidebar-scroll">
         <nav aria-label="Main navigation" className="navigation">
-          <button className="nav-item selected" onClick={newChat}><SquarePen /><span>New chat</span></button>
+          <button className="nav-item selected" onClick={newChat}><DiamondPlus /><span>New chat</span></button>
           <button className="nav-item" aria-disabled="true" title="Wakeups — design preview"><Bell /><span>Wakeups</span></button>
           <button className="nav-item" aria-disabled="true" title="Computers — design preview"><Monitor /><span>Computers</span></button>
           <button className="nav-item" aria-disabled="true" title="Talents — design preview"><UsersRound /><span>Talents</span></button>
