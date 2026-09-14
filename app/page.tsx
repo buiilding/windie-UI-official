@@ -14,9 +14,7 @@ function ChatScreen() {
   const [search, setSearch] = useState('');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const composerSteps = Math.min(7, Math.max(1, draft.split('\n').length));
   function newChat() { setDraft(''); setSearch(''); setSearching(false); inputRef.current?.focus(); }
-  function openSearch() { setSearching(true); if (!open) toggleSidebar(); }
   useEffect(() => {
     if (!rightPanelOpen) return;
     function handleEscape(event: KeyboardEvent) {
@@ -38,7 +36,7 @@ function ChatScreen() {
     <Sidebar className={`reference-sidebar ${open ? 'sidebar-expanded' : 'sidebar-collapsed'}`} collapsible="icon">
       <header className="sidebar-header">
         <button className="brand-toggle" aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'} onClick={toggleSidebar} title={open ? 'Collapse sidebar' : 'Expand sidebar'}><Bot className="brand-logo" /><PanelLeft className="brand-toggle-icon" /></button>
-        <span className="wordmark">ChatGPT</span>
+        <span className="wordmark">Windie</span>
         <button className="icon-button sidebar-search expanded-only" aria-label="Search recent chats" aria-expanded={searching} onClick={() => setSearching(!searching)} title="Search chats"><Search /></button>
         <button className="icon-button expanded-only" aria-label="Collapse sidebar" onClick={toggleSidebar} title="Collapse sidebar"><PanelLeft /></button>
       </header>
@@ -70,9 +68,9 @@ function ChatScreen() {
           {isMobile && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
           <section className="prompt-area" aria-labelledby="prompt-heading">
             <h1 id="prompt-heading">What’s on your mind today?</h1>
-            <div className={`composer ${composerSteps > 1 ? 'is-expanded' : ''}`} style={{ '--composer-steps': composerSteps } as CSSProperties}>
+            <div className="composer">
               <button className="icon-button attachment-button" aria-label="Add attachment" aria-disabled="true" title="Attachments — design preview"><Plus /></button>
-              <textarea ref={inputRef} rows={1} aria-label="Ask ChatGPT" aria-describedby="preview-description" placeholder="Ask ChatGPT" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) e.preventDefault(); }} />
+              <textarea ref={inputRef} rows={1} aria-label="Ask Windie" aria-describedby="preview-description" placeholder="Ask Windie" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) e.preventDefault(); }} />
               <Select defaultValue="High">
                 <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
                 <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
