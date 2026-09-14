@@ -56,12 +56,6 @@ function ChatScreen() {
           {searching && !recents.some(label => label.toLowerCase().includes(search.toLowerCase())) && <p className="no-results">No chats found</p>}
         </section>
       </div>
-      <nav className="sidebar-rail-actions" aria-label="Sidebar shortcuts">
-        <button className="icon-rail-button" aria-label="New chat" onClick={newChat} title="New chat"><DiamondPlus /></button>
-        <button className="icon-rail-button" aria-label="Computers" aria-disabled="true" title="Computers — design preview"><Monitor /></button>
-        <button className="icon-rail-button" aria-label="Search recent chats" aria-expanded={searching} onClick={openSearch} title="Search chats"><Search /></button>
-        <button className="icon-rail-button" aria-label="Chats" aria-disabled="true" title="Chats — design preview"><MessageCircle /></button>
-      </nav>
       <footer className="profile-footer">
         <button className="profile" aria-label="g p, Free account" aria-disabled="true" title="Account — design preview"><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small className="font-mono">Free</small></span></button>
         <button className="icon-button" aria-label="Gifts" aria-disabled="true" title="Gifts — design preview"><Gift /></button>
