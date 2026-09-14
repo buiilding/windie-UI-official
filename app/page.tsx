@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const recents = ['Design Windie UI', 'Website drawing tools', 'Best TV Show Lists', 'Bipolar Disorder Explained', 'Hot Pot Burner Name', 'Warzone Skin Recommendations', 'Answer questions', 'Condense Agent Instructions', 'Branch - Create Charlie Kirk Image', 'Create Charlie Kirk Image', 'App Subscription Legal Status', 'Assembly Ascending Flag'];
 const RIGHT_PANEL_MIN_WIDTH = 242;
 const RIGHT_PANEL_MAX_WIDTH = 1100;
+const SIDEBAR_COLLAPSE_DURATION = 220;
 
 function ChatScreen() {
   const { open, isMobile, toggleSidebar } = useSidebar();
@@ -17,6 +18,7 @@ function ChatScreen() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_MIN_WIDTH);
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false);
+  const [showReopenSidebar, setShowReopenSidebar] = useState(false);
   const rightPanelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMultiline = draft.includes('\n');
@@ -51,6 +53,14 @@ function ChatScreen() {
     };
   }, [isResizingRightPanel]);
   useEffect(() => {
+    if (open) {
+      setShowReopenSidebar(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShowReopenSidebar(true), SIDEBAR_COLLAPSE_DURATION);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  useEffect(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
     const maxTextareaHeight = 360;
@@ -60,7 +70,7 @@ function ChatScreen() {
     textarea.style.overflowY = textarea.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden';
   }, [draft]);
   return <>
-    <Sidebar className={`reference-sidebar ${open ? 'sidebar-expanded' : 'sidebar-collapsed'}`} collapsible="icon">
+    <Sidebar className={`reference-sidebar ${open ? 'sidebar-expanded' : 'sidebar-collapsed'}`} collapsible="offcanvas">
       <header className="sidebar-header">
         <button className="brand-toggle" aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'} onClick={toggleSidebar} title={open ? 'Collapse sidebar' : 'Expand sidebar'}><Bot className="brand-logo" /><PanelLeft className="brand-toggle-icon" /></button>
         <span className="wordmark">Windie</span>
@@ -92,7 +102,7 @@ function ChatScreen() {
       </header>
       <div className="workspace-body">
         <main className="chat-canvas">
-          {isMobile && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
+          {(isMobile || showReopenSidebar) && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
           <section className="prompt-area" aria-labelledby="prompt-heading">
             <h1 id="prompt-heading">What’s on your mind today?</h1>
             <div className={`composer ${isMultiline ? 'is-multiline' : ''}`}>
