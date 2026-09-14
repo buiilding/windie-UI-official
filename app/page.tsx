@@ -1,6 +1,6 @@
 'use client';
-import { useRef, useState, type CSSProperties } from 'react';
-import { Bell, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Bell, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift, ClipboardCheck, TerminalSquare, Globe2, Files, MessageCircle } from 'lucide-react';
 import { Sidebar, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -12,8 +12,17 @@ function ChatScreen() {
   const [draft, setDraft] = useState('');
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState('');
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   function newChat() { setDraft(''); setSearch(''); setSearching(false); inputRef.current?.focus(); }
+  useEffect(() => {
+    if (!rightPanelOpen) return;
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setRightPanelOpen(false);
+    }
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [rightPanelOpen]);
   return <>
     <Sidebar className="reference-sidebar">
       <header className="sidebar-header">
@@ -40,23 +49,41 @@ function ChatScreen() {
         <button className="icon-button" aria-label="Gifts" aria-disabled="true" title="Gifts — design preview"><Gift /></button>
       </footer>
     </Sidebar>
-    <main className="chat-canvas">
-      {(!open || isMobile) && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
-      <button className="icon-button right-panel" aria-label="Right panel" aria-disabled="true" title="Right panel — design preview"><PanelRight /></button>
-      <section className="prompt-area" aria-labelledby="prompt-heading">
-        <h1 id="prompt-heading">What’s on your mind today?</h1>
-        <div className="composer">
-          <button className="icon-button attachment-button" aria-label="Add attachment" aria-disabled="true" title="Attachments — design preview"><Plus /></button>
-          <input ref={inputRef} aria-label="Ask ChatGPT" aria-describedby="preview-description" placeholder="Ask ChatGPT" value={draft} onChange={e => setDraft(e.target.value)} />
-          <Select defaultValue="High">
-            <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
-            <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
-          </Select>
-          <button className="voice-button" aria-label="Start voice mode" aria-disabled="true" title="Voice — design preview"><AudioLines /></button>
-        </div>
-        <p id="preview-description" className="sr-only">Standalone design preview. You can type a draft; messaging, voice, attachments, and account services are not connected.</p>
-      </section>
-    </main>
+    <div className="workspace-shell">
+      <header className="workspace-header">
+        <button className="icon-button right-panel" aria-label={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'} aria-expanded={rightPanelOpen} onClick={() => setRightPanelOpen(!rightPanelOpen)} title={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'}><PanelRight /></button>
+      </header>
+      <div className="workspace-body">
+        <main className="chat-canvas">
+          {(!open || isMobile) && <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>}
+          <section className="prompt-area" aria-labelledby="prompt-heading">
+            <h1 id="prompt-heading">What’s on your mind today?</h1>
+            <div className="composer">
+              <button className="icon-button attachment-button" aria-label="Add attachment" aria-disabled="true" title="Attachments — design preview"><Plus /></button>
+              <input ref={inputRef} aria-label="Ask ChatGPT" aria-describedby="preview-description" placeholder="Ask ChatGPT" value={draft} onChange={e => setDraft(e.target.value)} />
+              <Select defaultValue="High">
+                <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
+                <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
+              </Select>
+              <button className="voice-button" aria-label="Start voice mode" aria-disabled="true" title="Voice — design preview"><AudioLines /></button>
+            </div>
+            <p id="preview-description" className="sr-only">Standalone design preview. You can type a draft; messaging, voice, attachments, and account services are not connected.</p>
+          </section>
+        </main>
+        <aside className={`right-sidebar ${rightPanelOpen ? 'is-open' : ''}`} aria-label="Tools panel" aria-hidden={!rightPanelOpen}>
+          <header className="right-sidebar-header">
+            <span className="right-sidebar-title">Tools</span>
+          </header>
+          <nav className="right-sidebar-menu" aria-label="Tools">
+            <button className="right-sidebar-item" aria-disabled="true" title="Review — design preview"><ClipboardCheck /><span>Review</span><kbd>Ctrl+Shift+G</kbd></button>
+            <button className="right-sidebar-item" aria-disabled="true" title="Terminal — design preview"><TerminalSquare /><span>Terminal</span><kbd>Ctrl+`</kbd></button>
+            <button className="right-sidebar-item" aria-disabled="true" title="Browser — design preview"><Globe2 /><span>Browser</span><kbd>Ctrl+T</kbd></button>
+            <button className="right-sidebar-item" aria-disabled="true" title="Files — design preview"><Files /><span>Files</span><kbd>Ctrl+P</kbd></button>
+            <button className="right-sidebar-item" aria-disabled="true" title="Side chat — design preview"><MessageCircle /><span>Side chat</span><kbd>Ctrl+Alt+S</kbd></button>
+          </nav>
+        </aside>
+      </div>
+    </div>
   </>;
 }
 export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }
