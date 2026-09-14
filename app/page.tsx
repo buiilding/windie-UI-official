@@ -29,14 +29,14 @@ function ChatScreen() {
           <button className="nav-item" aria-disabled="true" title="Talents — design preview"><UsersRound /><span>Talents</span></button>
         </nav>
         <section className="recents" aria-labelledby="recents-heading">
-          <h2 id="recents-heading">Recents</h2>
-          {searching && <input className="history-search" autoFocus aria-label="Search recent chats" placeholder="Search chats" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setSearching(false); setSearch(''); } }} />}
-          {recents.filter(label => label.toLowerCase().includes(search.toLowerCase())).map(label => <button className="recent-item" key={label} aria-disabled="true" title={label + ' — design preview'}>{label}</button>)}
+          <h2 id="recents-heading" className="font-mono">Recents</h2>
+          {searching && <input className="history-search font-mono" autoFocus aria-label="Search recent chats" placeholder="Search chats" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setSearching(false); setSearch(''); } }} />}
+          {recents.filter(label => label.toLowerCase().includes(search.toLowerCase())).map(label => <button className="recent-item font-mono" key={label} aria-disabled="true" title={label + ' — design preview'}>{label}</button>)}
           {searching && !recents.some(label => label.toLowerCase().includes(search.toLowerCase())) && <p className="no-results">No chats found</p>}
         </section>
       </div>
       <footer className="profile-footer">
-        <button className="profile" aria-label="g p, Free account" aria-disabled="true" title="Account — design preview"><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small>Free</small></span></button>
+        <button className="profile" aria-label="g p, Free account" aria-disabled="true" title="Account — design preview"><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small className="font-mono">Free</small></span></button>
         <button className="icon-button" aria-label="Gifts" aria-disabled="true" title="Gifts — design preview"><Gift /></button>
       </footer>
     </Sidebar>
@@ -49,7 +49,7 @@ function ChatScreen() {
           <button className="icon-button attachment-button" aria-label="Add attachment" aria-disabled="true" title="Attachments — design preview"><Plus /></button>
           <input ref={inputRef} aria-label="Ask ChatGPT" aria-describedby="preview-description" placeholder="Ask ChatGPT" value={draft} onChange={e => setDraft(e.target.value)} />
           <Select defaultValue="High">
-            <SelectTrigger className="effort-select" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
             <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
           </Select>
           <button className="voice-button" aria-label="Start voice mode" aria-disabled="true" title="Voice — design preview"><AudioLines /></button>

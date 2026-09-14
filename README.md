@@ -1,6 +1,6 @@
 # Windie chat screen
 
-A standalone React and Vite website based on the supplied reference. It runs locally with no Windie runtime, ChatGPT Sites, Cloudflare, or external font service dependency.
+A standalone React and Vite website based on the supplied reference. It runs locally with no Windie runtime, ChatGPT Sites, or Cloudflare dependency. IBM Plex Sans and IBM Plex Mono are loaded from Google Fonts when the browser has network access, with local system fallbacks.
 
 ## Run locally
 
