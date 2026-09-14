@@ -60,7 +60,8 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .reopen-sidebar { position: absolute; left: 15px; top: 10px; }
 .prompt-area { position: absolute; top: 35.35svh; left: 50%; transform: translateX(-50%); width: min(712px, calc(100% - 64px)); }
 .prompt-area h1 { font-size: 22px; font-weight: 400; line-height: 30px; text-align: center; letter-spacing: .05px; margin: 0 0 29px; }
-.composer { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 7px 6px 10px; border-radius: 28px; background: linear-gradient(115deg,#302c27 0%,#2c2925 65%,#302c27 100%); }
+.composer { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 12px 10px 12px 12px; border: 1px solid #4a433b; border-radius: 18px; background: #2c2925; }
+.composer:focus-within { border-color: #f3a623; box-shadow: 0 0 0 1px rgb(243 166 35 / 22%); }
 .attachment-button { width: 34px; height: 34px; border-radius: 50%; }
 .attachment-button svg { width: 23px; height: 23px; }
 .composer input { width: 0; flex: 1; min-width: 0; border: 0; background: transparent; color: var(--foreground); font-size: 14px; padding: 8px 0; outline-offset: 1px; border-radius: 3px; }
