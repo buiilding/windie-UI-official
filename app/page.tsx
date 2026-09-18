@@ -53,6 +53,7 @@ import { hostedApiConfigured } from '@/lib/hosted-api';
 import { useHostedAuth } from '@/lib/hosted-auth';
 import type { HostedMessage, ReasoningRequest } from '@/lib/hosted-types';
 import { useHostedWindie } from './hosted/use-hosted-windie';
+import { AuthLayout, SignInPanel } from './hosted/auth-screen';
 import { routeIsVisible, transcriptRows } from './hosted/transcript-state';
 
 const RIGHT_PANEL_MIN_WIDTH = 242;
@@ -773,65 +774,49 @@ function AuthScreen() {
   const auth = useHostedAuth();
   if (!hostedApiConfigured())
     return (
-      <main className="auth-screen">
-        <section>
-          <Bot className="brand-logo" />
+      <AuthLayout>
+        <section className="auth-content auth-status">
           <h1>Windie is not configured</h1>
           <p>
             This deployment needs its hosted API URL before it can connect to
             your conversations.
           </p>
         </section>
-      </main>
+      </AuthLayout>
     );
   if (auth.isLoading)
     return (
-      <main className="auth-screen">
-        <section>
-          <LoaderCircle className="spin" />
+      <AuthLayout>
+        <section
+          className="auth-content auth-status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <LoaderCircle className="spin" aria-hidden="true" />
+          <h1>Getting things ready.</h1>
           <p>Loading your Windie account…</p>
         </section>
-      </main>
+      </AuthLayout>
     );
   if (auth.configurationError)
     return (
-      <main className="auth-screen">
-        <section>
-          <Bot className="brand-logo" />
+      <AuthLayout>
+        <section className="auth-content auth-status">
           <h1>Windie sign-in is not configured</h1>
           <p>{auth.configurationError}</p>
         </section>
-      </main>
+      </AuthLayout>
     );
   if (!auth.session)
     return (
-      <main className="auth-screen">
-        <section>
-          <Bot className="brand-logo" />
-          <h1>Windie</h1>
-          <p>Sign in to open your hosted conversations.</p>
-          <button
-            className="send-button auth-button"
-            onClick={() => void auth.signInWithGoogle()}
-            disabled={auth.isSigningIn}
-          >
-            {auth.isSigningIn ? 'Opening Google…' : 'Continue with Google'}
-          </button>
-          {auth.error && <p className="turn-status is-error">{auth.error}</p>}
-        </section>
-      </main>
+      <SignInPanel
+        signingIn={auth.isSigningIn}
+        error={auth.error}
+        onSignIn={() => void auth.signInWithGoogle()}
+      />
     );
-  return (
-    <ChatScreen
-      key={auth.session.user.id}
-      accessToken={auth.session.access_token}
-      email={auth.session.user.email ?? null}
-      onSignOut={() => void auth.signOut()}
-    />
-  );
-}
-
-export default function Home() {
+  // The account gate is not a sidebar child. The sidebar's flex layout previously
+  // shrink-wrapped the sign-in page, leaving its card centered in a narrow column.
   return (
     <SidebarProvider
       style={
@@ -841,7 +826,16 @@ export default function Home() {
         } as CSSProperties
       }
     >
-      <AuthScreen />
+      <ChatScreen
+        key={auth.session.user.id}
+        accessToken={auth.session.access_token}
+        email={auth.session.user.email ?? null}
+        onSignOut={() => void auth.signOut()}
+      />
     </SidebarProvider>
   );
+}
+
+export default function Home() {
+  return <AuthScreen />;
 }
