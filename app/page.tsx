@@ -12,6 +12,46 @@ const MOCK_CONVERSATION_ID = 'greeting-exchange';
 const MOCK_RESPONSE = 'Hi Peter. What would you like to work on?';
 
 type TranscriptStatus = 'idle' | 'validating' | 'thinking' | 'streaming' | 'completed' | 'stopped' | 'error';
+type StoredTurnStatus = 'completed' | 'stopped' | 'error';
+
+type StoredTranscriptTurn = {
+  id: string;
+  prompt: string;
+  assistantText: string;
+  status: StoredTurnStatus;
+  messageActionsVisible: boolean;
+};
+
+type RenderedTranscriptTurn = Omit<StoredTranscriptTurn, 'status'> & {
+  status: Exclude<TranscriptStatus, 'idle'>;
+};
+
+function BranchAffordance() {
+  return <button className="branch-affordance" aria-disabled="true" title="Branching — transcript preview"><GitBranch /><span>Branch</span></button>;
+}
+
+function AssistantActions({ visible }: { visible: boolean }) {
+  return <div className={`message-actions ${visible ? 'is-visible' : ''}`} aria-label="Assistant message actions" aria-hidden={!visible}><button aria-label="Copy response"><Copy /></button><button aria-label="Good response"><ThumbsUp /></button><button aria-label="Bad response"><ThumbsDown /></button><button aria-label="Share response"><Share /></button><button aria-label="Regenerate response"><RotateCcw /></button><button aria-label="More response actions"><Ellipsis /></button></div>;
+}
+
+function TranscriptTurn({ prompt, assistantText, status, messageActionsVisible }: {
+  prompt: string;
+  assistantText: string;
+  status: Exclude<TranscriptStatus, 'idle'>;
+  messageActionsVisible: boolean;
+}) {
+  return <>
+    {status !== 'validating' && <article className="message-row user-message"><div className="message-bubble">{prompt}</div><BranchAffordance /></article>}
+    {(status === 'thinking' || status === 'streaming' || status === 'completed' || status === 'stopped' || status === 'error') && <article className="message-row assistant-message">
+      {status === 'thinking' && <p className="thinking-status"><LoaderCircle /> Thinking</p>}
+      {status === 'streaming' && <p className="assistant-copy">{assistantText}<span className="stream-caret" /></p>}
+      {status === 'completed' && <p className="assistant-copy">{assistantText}</p>}
+      {status === 'stopped' && <><p className="assistant-copy">{assistantText}</p><p className="turn-status"><Square /> Stopped</p></>}
+      {status === 'error' && <p className="turn-status is-error">Something went wrong. Try sending that again.</p>}
+      {status === 'completed' && <AssistantActions visible={messageActionsVisible} />}
+    </article>}
+  </>;
+}
 
 function ChatScreen() {
   const { open, isMobile, toggleSidebar } = useSidebar();
@@ -27,11 +67,37 @@ function ChatScreen() {
   const [messageActionsVisible, setMessageActionsVisible] = useState(false);
   const [recentTitle, setRecentTitle] = useState<string | null>(null);
   const [attachmentReady, setAttachmentReady] = useState(false);
+  const [previousTurns, setPreviousTurns] = useState<StoredTranscriptTurn[]>([]);
+  const [activeTurnId, setActiveTurnId] = useState('');
   const rightPanelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
+  const nextTurnNumber = useRef(0);
+  const activeTurnIdRef = useRef('');
+  const actionRevealTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const isMultiline = draft.includes('\n');
   const transcriptStarted = transcriptStatus !== 'idle';
-  const transcriptTitle = recentTitle ?? (transcriptStarted ? 'New conversation' : '');
+  const activeTranscriptTurn: RenderedTranscriptTurn | null = transcriptStatus === 'idle' || !submittedPrompt
+    ? null
+    : { id: activeTurnId, prompt: submittedPrompt, assistantText, status: transcriptStatus, messageActionsVisible };
+  const renderedTranscriptTurns: RenderedTranscriptTurn[] = activeTranscriptTurn
+    ? [...previousTurns, activeTranscriptTurn]
+    : previousTurns;
+  function clearActionRevealTimers() {
+    actionRevealTimers.current.forEach(timer => clearTimeout(timer));
+    actionRevealTimers.current.clear();
+  }
+  function scheduleActionReveal(turnId: string) {
+    const timer = setTimeout(() => {
+      actionRevealTimers.current.delete(timer);
+      if (activeTurnIdRef.current === turnId) {
+        setMessageActionsVisible(true);
+      } else {
+        setPreviousTurns(turns => turns.map(turn => turn.id === turnId ? { ...turn, messageActionsVisible: true } : turn));
+      }
+    }, 3000);
+    actionRevealTimers.current.add(timer);
+  }
   function newChat() {
     window.history.pushState({}, '', '/');
     setDraft('');
@@ -43,18 +109,32 @@ function ChatScreen() {
     setMessageActionsVisible(false);
     setRecentTitle(null);
     setAttachmentReady(false);
+    setPreviousTurns([]);
+    setActiveTurnId('');
+    nextTurnNumber.current = 0;
+    activeTurnIdRef.current = '';
+    clearActionRevealTimers();
+    transcriptScrollRef.current?.scrollTo({ top: 0 });
     inputRef.current?.focus();
   }
   function submitDraft() {
     const prompt = draft.trim();
     if (!prompt || transcriptStatus === 'thinking' || transcriptStatus === 'streaming') return;
-    window.history.pushState({}, '', `/c/${MOCK_CONVERSATION_ID}`);
+    const isFirstTurn = transcriptStatus === 'idle';
+    if (!isFirstTurn && submittedPrompt && (transcriptStatus === 'completed' || transcriptStatus === 'stopped' || transcriptStatus === 'error')) {
+      setPreviousTurns(turns => [...turns, { id: activeTurnId, prompt: submittedPrompt, assistantText, status: transcriptStatus, messageActionsVisible }]);
+    } else if (isFirstTurn) {
+      window.history.pushState({}, '', `/c/${MOCK_CONVERSATION_ID}`);
+    }
+    nextTurnNumber.current += 1;
+    const nextTurnId = `turn-${nextTurnNumber.current}`;
+    activeTurnIdRef.current = nextTurnId;
+    setActiveTurnId(nextTurnId);
     setSubmittedPrompt(prompt);
     setDraft('');
     setAssistantText('');
     setMessageActionsVisible(false);
-    setRecentTitle(null);
-    setTranscriptStatus('validating');
+    setTranscriptStatus(isFirstTurn ? 'validating' : 'thinking');
   }
   function stopResponse() {
     if (transcriptStatus !== 'thinking' && transcriptStatus !== 'streaming') return;
@@ -99,6 +179,15 @@ function ChatScreen() {
     textarea.style.overflowY = textarea.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden';
   }, [draft]);
   useEffect(() => {
+    if (!transcriptStarted) return;
+    const frame = window.requestAnimationFrame(() => {
+      const transcript = transcriptScrollRef.current;
+      if (transcript) transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [transcriptStarted, renderedTranscriptTurns.length, transcriptStatus, messageActionsVisible]);
+  useEffect(() => () => clearActionRevealTimers(), []);
+  useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let interval: ReturnType<typeof setInterval> | undefined;
     if (transcriptStatus === 'validating') {
@@ -112,12 +201,12 @@ function ChatScreen() {
         setAssistantText(MOCK_RESPONSE.slice(0, nextCharacter));
         if (nextCharacter >= MOCK_RESPONSE.length) {
           clearInterval(interval);
-          setRecentTitle('Greeting exchange');
+          setRecentTitle(title => title ?? 'Greeting exchange');
           setTranscriptStatus('completed');
         }
       }, 30);
     } else if (transcriptStatus === 'completed') {
-      timeout = setTimeout(() => setMessageActionsVisible(true), 3000);
+      scheduleActionReveal(activeTurnId);
     }
     return () => {
       if (timeout) clearTimeout(timeout);
@@ -154,23 +243,16 @@ function ChatScreen() {
     </Sidebar>
     <div className="workspace-shell">
       <header className={`workspace-header ${rightPanelOpen ? 'tools-open' : 'tools-collapsed'}`}>
-        {transcriptStarted && <div className="conversation-header"><span>{transcriptTitle}</span><span className="model-indicator font-mono">GPT-5.4 <span>High</span></span></div>}
         <button className="icon-button right-panel" aria-label={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'} aria-expanded={rightPanelOpen} onClick={() => setRightPanelOpen(!rightPanelOpen)} title={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'}><PanelRight /></button>
       </header>
       <div className="workspace-body">
         <main className={`chat-canvas ${transcriptStarted ? 'has-transcript' : ''}`}>
           <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>
-          <section className={`transcript ${transcriptStarted ? 'is-visible' : ''}`} aria-live="polite">
-            {transcriptStatus !== 'validating' && submittedPrompt && <article className="message-row user-message"><div className="message-bubble">{submittedPrompt}</div><button className="branch-affordance" aria-disabled="true" title="Branching — transcript preview"><GitBranch /><span>Branch</span></button></article>}
-            {(transcriptStatus === 'thinking' || transcriptStatus === 'streaming' || transcriptStatus === 'completed' || transcriptStatus === 'stopped' || transcriptStatus === 'error') && <article className="message-row assistant-message">
-              {transcriptStatus === 'thinking' && <p className="thinking-status"><LoaderCircle /> Thinking</p>}
-              {transcriptStatus === 'streaming' && <><p className="thinking-status is-complete"><LoaderCircle /> Thinking</p><p className="assistant-copy">{assistantText}<span className="stream-caret" /></p></>}
-              {transcriptStatus === 'completed' && <p className="assistant-copy">{assistantText}</p>}
-              {transcriptStatus === 'stopped' && <><p className="assistant-copy">{assistantText}</p><p className="turn-status"><Square /> Stopped</p></>}
-              {transcriptStatus === 'error' && <p className="turn-status is-error">Something went wrong. Try sending that again.</p>}
-              {messageActionsVisible && <div className="message-actions" aria-label="Assistant message actions"><button aria-label="Copy response"><Copy /></button><button aria-label="Good response"><ThumbsUp /></button><button aria-label="Bad response"><ThumbsDown /></button><button aria-label="Share response"><Share /></button><button aria-label="Regenerate response"><RotateCcw /></button><button aria-label="More response actions"><Ellipsis /></button></div>}
-            </article>}
-          </section>
+          <div ref={transcriptScrollRef} className="transcript-scroll">
+            <section className={`transcript ${transcriptStarted ? 'is-visible' : ''}`} aria-live="polite">
+              {renderedTranscriptTurns.map(turn => <TranscriptTurn key={turn.id} {...turn} />)}
+            </section>
+          </div>
           <section className={`prompt-area ${transcriptStarted ? 'conversation-composer' : ''} ${attachmentReady ? 'has-attachment' : ''}`} aria-labelledby="prompt-heading">
             {!transcriptStarted && <h1 id="prompt-heading">What’s on your mind today?</h1>}
             {attachmentReady && <div className="attachment-preview"><span>mock-notes.pdf</span><button onClick={() => setAttachmentReady(false)} aria-label="Remove attachment"><X /></button></div>}
