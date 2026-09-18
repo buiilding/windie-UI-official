@@ -242,9 +242,7 @@ function ChatScreen() {
       </footer>
     </Sidebar>
     <div className="workspace-shell">
-      <header className={`workspace-header ${rightPanelOpen ? 'tools-open' : 'tools-collapsed'}`}>
-        <button className="icon-button right-panel" aria-label={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'} aria-expanded={rightPanelOpen} onClick={() => setRightPanelOpen(!rightPanelOpen)} title={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'}><PanelRight /></button>
-      </header>
+      <button className="icon-button right-panel" aria-label={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'} aria-expanded={rightPanelOpen} onClick={() => setRightPanelOpen(!rightPanelOpen)} title={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'}><PanelRight /></button>
       <div className="workspace-body">
         <main className={`chat-canvas ${transcriptStarted ? 'has-transcript' : ''}`}>
           <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>
