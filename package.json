@@ -10,14 +10,14 @@
     "build": "tsc --noEmit && vite build",
     "start": "vite --host localhost --port 3000 --strictPort",
     "lint": "oxlint",
+    "test": "vitest run",
     "format": "oxfmt",
     "preview": "vite preview --host localhost --port 3000 --strictPort"
   },
   "dependencies": {
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
     "@base-ui/react": "1.7.0",
     "@shadcn/react": "0.3.0",
+    "@supabase/supabase-js": "^2.112.3",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
@@ -25,7 +25,9 @@
     "embla-carousel-react": "8.5.2",
     "input-otp": "1.4.2",
     "lucide-react": "1.31.0",
+    "react": "19.2.6",
     "react-day-picker": "9.8.1",
+    "react-dom": "19.2.6",
     "react-resizable-panels": "4.5.8",
     "recharts": "3.8.0",
     "shadcn": "4.18.0",
@@ -43,7 +45,8 @@
     "oxlint-tsgolint": "7.0.2001",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
-    "vite": "8.0.13"
+    "vite": "8.0.13",
+    "vitest": "^5.0.1"
   },
   "type": "module"
 }

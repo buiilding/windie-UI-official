@@ -1,405 +1,847 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Bell, ChevronLeft, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift, ClipboardCheck, Globe2, Files, MessageCircle, Bot, ArrowUp, Copy, Ellipsis, GitBranch, LoaderCircle, RotateCcw, Share, Square, ThumbsDown, ThumbsUp, X } from 'lucide-react';
-import { Sidebar, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Reference labels are presentation fixtures, independent of runtime history.
-const recents = ['Design Windie UI', 'Website drawing tools', 'Best TV Show Lists', 'Bipolar Disorder Explained', 'Hot Pot Burner Name', 'Warzone Skin Recommendations', 'Answer questions', 'Condense Agent Instructions', 'Branch - Create Charlie Kirk Image', 'Create Charlie Kirk Image', 'App Subscription Legal Status', 'Assembly Ascending Flag'];
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
+import {
+  Bell,
+  ChevronLeft,
+  Monitor,
+  UsersRound,
+  DiamondPlus,
+  Search,
+  PanelLeft,
+  PanelRight,
+  Plus,
+  AudioLines,
+  Gift,
+  ClipboardCheck,
+  Globe2,
+  Files,
+  MessageCircle,
+  Bot,
+  ArrowUp,
+  Copy,
+  Ellipsis,
+  GitBranch,
+  LoaderCircle,
+  RotateCcw,
+  Share,
+  Square,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react';
+import { Sidebar, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { leafMessageIds, selectedPathMessages } from '@/lib/conversation-tree';
+import {
+  conversationIdFromPath,
+  conversationPath,
+} from '@/lib/conversation-route';
+import { hostedApiConfigured } from '@/lib/hosted-api';
+import { useHostedAuth } from '@/lib/hosted-auth';
+import type { HostedMessage, ReasoningRequest } from '@/lib/hosted-types';
+import { useHostedWindie } from './hosted/use-hosted-windie';
+import { routeIsVisible, transcriptRows } from './hosted/transcript-state';
+
 const RIGHT_PANEL_MIN_WIDTH = 242;
 const RIGHT_PANEL_MAX_WIDTH = 1100;
-const MOCK_CONVERSATION_ID = 'greeting-exchange';
-const MOCK_RESPONSE = 'Hi Peter. What would you like to work on?';
-
-type TranscriptStatus = 'idle' | 'validating' | 'thinking' | 'streaming' | 'completed' | 'stopped' | 'error';
-type StoredTurnStatus = 'completed' | 'stopped' | 'error';
-
-type StoredTranscriptTurn = {
-  id: string;
-  prompt: string;
-  assistantText: string;
-  status: StoredTurnStatus;
-  messageActionsVisible: boolean;
-};
-
-type RenderedTranscriptTurn = Omit<StoredTranscriptTurn, 'status'> & {
-  status: Exclude<TranscriptStatus, 'idle'>;
-};
-
 type DockView = 'tools' | 'graph';
-
-type GraphNode = {
-  id: string;
-  turnId: string;
-  role: 'user' | 'assistant';
-  preview: string;
-};
+type GraphNode = { id: string; role: HostedMessage['role']; preview: string };
 
 function BranchAffordance() {
-  return <button className="branch-affordance" aria-disabled="true" title="Branching — transcript preview"><GitBranch /><span>Branch</span></button>;
+  return (
+    <button
+      className="branch-affordance"
+      disabled
+      title="Branching is not available yet"
+    >
+      <GitBranch />
+      <span>Branch</span>
+    </button>
+  );
+}
+function AssistantActions() {
+  return (
+    <div
+      className="message-actions is-visible"
+      aria-label="Assistant message actions"
+    >
+      <button disabled aria-label="Copy response">
+        <Copy />
+      </button>
+      <button disabled aria-label="Good response">
+        <ThumbsUp />
+      </button>
+      <button disabled aria-label="Bad response">
+        <ThumbsDown />
+      </button>
+      <button disabled aria-label="Share response">
+        <Share />
+      </button>
+      <button disabled aria-label="Regenerate response">
+        <RotateCcw />
+      </button>
+      <button disabled aria-label="More response actions">
+        <Ellipsis />
+      </button>
+    </div>
+  );
 }
 
-function AssistantActions({ visible }: { visible: boolean }) {
-  return <div className={`message-actions ${visible ? 'is-visible' : ''}`} aria-label="Assistant message actions" aria-hidden={!visible}><button aria-label="Copy response"><Copy /></button><button aria-label="Good response"><ThumbsUp /></button><button aria-label="Bad response"><ThumbsDown /></button><button aria-label="Share response"><Share /></button><button aria-label="Regenerate response"><RotateCcw /></button><button aria-label="More response actions"><Ellipsis /></button></div>;
+function TranscriptMessage({
+  message,
+  streaming = false,
+}: {
+  message: HostedMessage;
+  streaming?: boolean;
+}) {
+  if (message.role === 'user')
+    return (
+      <article
+        className="message-row user-message"
+        data-message-id={message.id}
+        data-message-role="user"
+      >
+        <div className="message-bubble">{message.content}</div>
+        <BranchAffordance />
+      </article>
+    );
+  if (message.role === 'assistant')
+    return (
+      <article
+        className="message-row assistant-message"
+        data-message-id={message.id}
+        data-message-role="assistant"
+      >
+        {message.content ? (
+          <p className="assistant-copy">
+            {message.content}
+            {streaming && <span className="stream-caret" />}
+          </p>
+        ) : streaming ? (
+          <p className="thinking-status">
+            <LoaderCircle /> Thinking
+          </p>
+        ) : null}
+        {!streaming && <AssistantActions />}
+      </article>
+    );
+  return (
+    <article
+      className="message-row assistant-message"
+      data-message-id={message.id}
+      data-message-role={message.role}
+    >
+      <p className="turn-status">{message.content}</p>
+    </article>
+  );
 }
-
-function TranscriptTurn({ id, prompt, assistantText, status, messageActionsVisible }: RenderedTranscriptTurn) {
-  return <>
-    {status !== 'validating' && <article className="message-row user-message" data-turn-id={id} data-message-role="user"><div className="message-bubble">{prompt}</div><BranchAffordance /></article>}
-    {(status === 'thinking' || status === 'streaming' || status === 'completed' || status === 'stopped' || status === 'error') && <article className="message-row assistant-message" data-turn-id={id} data-message-role="assistant">
-      {status === 'thinking' && <p className="thinking-status"><LoaderCircle /> Thinking</p>}
-      {status === 'streaming' && <p className="assistant-copy">{assistantText}<span className="stream-caret" /></p>}
-      {status === 'completed' && <p className="assistant-copy">{assistantText}</p>}
-      {status === 'stopped' && <><p className="assistant-copy">{assistantText}</p><p className="turn-status"><Square /> Stopped</p></>}
-      {status === 'error' && <p className="turn-status is-error">Something went wrong. Try sending that again.</p>}
-      {status === 'completed' && <AssistantActions visible={messageActionsVisible} />}
-    </article>}
-  </>;
-}
-
-function GraphDock({ nodes, selectedNodeId, onSelectNode, onBack, onOpenMessage, onBranch }: {
+function GraphDock({
+  nodes,
+  selectedNodeId,
+  onSelectNode,
+  onBack,
+  onOpenMessage,
+}: {
   nodes: GraphNode[];
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
   onBack: () => void;
   onOpenMessage: (node: GraphNode) => void;
-  onBranch: (node: GraphNode) => void;
 }) {
-  const selectedNode = nodes.find(node => node.id === selectedNodeId) ?? nodes.at(-1) ?? null;
-
-  return <section className="graph-dock" aria-label="Conversation graph">
-    <header className="graph-dock-header">
-      <button className="graph-back" onClick={onBack}><ChevronLeft /><span>Tools</span></button>
-      <span className="graph-title"><GitBranch />Graph</span>
-    </header>
-    {nodes.length === 0
-      ? <div className="graph-empty"><GitBranch /><strong>Nothing to map yet</strong><span>Send a message to start this conversation’s graph.</span></div>
-      : <>
+  const selected =
+    nodes.find((node) => node.id === selectedNodeId) ?? nodes.at(-1) ?? null;
+  return (
+    <section className="graph-dock" aria-label="Conversation graph">
+      <header className="graph-dock-header">
+        <button className="graph-back" onClick={onBack}>
+          <ChevronLeft />
+          <span>Tools</span>
+        </button>
+        <span className="graph-title">
+          <GitBranch />
+          Graph
+        </span>
+      </header>
+      {nodes.length === 0 ? (
+        <div className="graph-empty">
+          <GitBranch />
+          <strong>Nothing to map yet</strong>
+          <span>Send a message to start this conversation’s graph.</span>
+        </div>
+      ) : (
+        <>
           <div className="graph-canvas" aria-label="Selected conversation path">
             <p className="graph-path-label">Selected path</p>
             <div className="graph-tree">
-              {nodes.map((node, index) => <div className="graph-tree-row" key={node.id}>
-                {index > 0 && <span className="graph-edge" aria-hidden="true" />}
-                <button
-                  className={`graph-node is-on-path ${node.id === selectedNode?.id ? 'is-selected' : ''}`}
-                  onClick={() => onSelectNode(node.id)}
-                  aria-pressed={node.id === selectedNode?.id}
-                >
-                  <span className="graph-node-role">{node.role === 'user' ? 'You' : 'Windie'}</span>
-                  <span className="graph-node-preview">{node.preview}</span>
-                </button>
-              </div>)}
+              {nodes.map((node, index) => (
+                <div className="graph-tree-row" key={node.id}>
+                  {index > 0 && (
+                    <span className="graph-edge" aria-hidden="true" />
+                  )}
+                  <button
+                    className={`graph-node is-on-path ${node.id === selected?.id ? 'is-selected' : ''}`}
+                    onClick={() => onSelectNode(node.id)}
+                    aria-pressed={node.id === selected?.id}
+                  >
+                    <span className="graph-node-role">
+                      {node.role === 'user' ? 'You' : 'Windie'}
+                    </span>
+                    <span className="graph-node-preview">{node.preview}</span>
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-          {selectedNode && <section className="graph-inspector" aria-label="Selected graph node">
-            <p className="graph-inspector-label">Selected message</p>
-            <p className="graph-inspector-preview">{selectedNode.preview}</p>
-            <div className="graph-actions">
-              <button onClick={() => onOpenMessage(selectedNode)}>Open this message</button>
-              <button onClick={() => onBranch(selectedNode)}>Branch from here</button>
-            </div>
-          </section>}
-        </>}
-  </section>;
+          {selected && (
+            <section
+              className="graph-inspector"
+              aria-label="Selected graph node"
+            >
+              <p className="graph-inspector-label">Selected message</p>
+              <p className="graph-inspector-preview">{selected.preview}</p>
+              <div className="graph-actions">
+                <button onClick={() => onOpenMessage(selected)}>
+                  Open this message
+                </button>
+                <button disabled title="Branching is not available yet">
+                  Branch from here
+                </button>
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
-function ChatScreen() {
-  const { open, isMobile, toggleSidebar } = useSidebar();
+function ChatScreen({
+  accessToken,
+  email,
+  onSignOut,
+}: {
+  accessToken: string;
+  email: string | null;
+  onSignOut: () => void;
+}) {
+  const { open, toggleSidebar } = useSidebar();
+  const [requestedConversationId, setRequestedConversationId] = useState(() =>
+    conversationIdFromPath(window.location.pathname),
+  );
+  const navigateToConversation = useCallback((conversationId: string) => {
+    window.history.pushState({}, '', conversationPath(conversationId));
+    setRequestedConversationId(conversationId);
+  }, []);
+  const navigateToNewChat = useCallback(() => {
+    window.history.pushState({}, '', '/');
+    setRequestedConversationId(null);
+  }, []);
+  useEffect(() => {
+    const onPopState = () =>
+      setRequestedConversationId(
+        conversationIdFromPath(window.location.pathname),
+      );
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  const hosted = useHostedWindie(
+    accessToken,
+    requestedConversationId,
+    navigateToConversation,
+  );
+  const { state } = hosted;
+  const viewVisible = routeIsVisible(state, requestedConversationId);
   const [draft, setDraft] = useState('');
+  const [reasoningEffort, setReasoningEffort] = useState<string | null>('High');
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState('');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [dockView, setDockView] = useState<DockView>('tools');
-  const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
-  const [graphNotice, setGraphNotice] = useState('');
+  const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(
+    null,
+  );
   const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_MIN_WIDTH);
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false);
-  const [transcriptStatus, setTranscriptStatus] = useState<TranscriptStatus>('idle');
-  const [submittedPrompt, setSubmittedPrompt] = useState('');
-  const [assistantText, setAssistantText] = useState('');
-  const [messageActionsVisible, setMessageActionsVisible] = useState(false);
-  const [recentTitle, setRecentTitle] = useState<string | null>(null);
-  const [attachmentReady, setAttachmentReady] = useState(false);
-  const [previousTurns, setPreviousTurns] = useState<StoredTranscriptTurn[]>([]);
-  const [activeTurnId, setActiveTurnId] = useState('');
-  const rightPanelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const resize = useRef<{ startX: number; startWidth: number } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const transcriptScrollRef = useRef<HTMLDivElement>(null);
-  const nextTurnNumber = useRef(0);
-  const activeTurnIdRef = useRef('');
-  const actionRevealTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
-  const isMultiline = draft.includes('\n');
-  const transcriptStarted = transcriptStatus !== 'idle';
-  const activeTranscriptTurn: RenderedTranscriptTurn | null = transcriptStatus === 'idle' || !submittedPrompt
-    ? null
-    : { id: activeTurnId, prompt: submittedPrompt, assistantText, status: transcriptStatus, messageActionsVisible };
-  const renderedTranscriptTurns: RenderedTranscriptTurn[] = activeTranscriptTurn
-    ? [...previousTurns, activeTranscriptTurn]
-    : previousTurns;
-  const graphNodes = useMemo<GraphNode[]>(() => renderedTranscriptTurns.flatMap(turn => {
-    const userNode: GraphNode = { id: `${turn.id}:user`, turnId: turn.id, role: 'user', preview: turn.prompt };
-    if (turn.status === 'validating') return [userNode];
-    const assistantPreview = turn.status === 'thinking'
-      ? 'Thinking…'
-      : turn.status === 'error'
-        ? 'Something went wrong.'
-        : turn.assistantText || (turn.status === 'stopped' ? 'Stopped' : 'Waiting for a response…');
-    return [userNode, { id: `${turn.id}:assistant`, turnId: turn.id, role: 'assistant', preview: assistantPreview }];
-  }), [renderedTranscriptTurns]);
-  const activeGraphNodeId = graphNodes.some(node => node.id === selectedGraphNodeId)
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pathMessages = useMemo(
+    () => selectedPathMessages(state.activeConversation, state.selectedHeadId),
+    [state.activeConversation, state.selectedHeadId],
+  );
+  const transcriptStarted =
+    requestedConversationId !== null ||
+    pathMessages.length > 0 ||
+    Boolean(state.pendingUserText) ||
+    state.sending;
+  const branchHeads =
+    state.selectedHeadId === null
+      ? leafMessageIds(state.activeConversation)
+      : [];
+  const needsHead = branchHeads.length > 1;
+  const graphNodes = useMemo<GraphNode[]>(
+    () =>
+      pathMessages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        preview:
+          message.content ||
+          (message.role === 'assistant' ? 'Thinking…' : 'Message'),
+      })),
+    [pathMessages],
+  );
+  const activeGraphNodeId = graphNodes.some(
+    (node) => node.id === selectedGraphNodeId,
+  )
     ? selectedGraphNodeId
-    : graphNodes.at(-1)?.id ?? null;
-  function clearActionRevealTimers() {
-    actionRevealTimers.current.forEach(timer => clearTimeout(timer));
-    actionRevealTimers.current.clear();
-  }
-  function scheduleActionReveal(turnId: string) {
-    const timer = setTimeout(() => {
-      actionRevealTimers.current.delete(timer);
-      if (activeTurnIdRef.current === turnId) {
-        setMessageActionsVisible(true);
-      } else {
-        setPreviousTurns(turns => turns.map(turn => turn.id === turnId ? { ...turn, messageActionsVisible: true } : turn));
-      }
-    }, 3000);
-    actionRevealTimers.current.add(timer);
-  }
-  function newChat() {
-    window.history.pushState({}, '', '/');
+    : (graphNodes.at(-1)?.id ?? null);
+  const conversations = state.conversations.filter((conversation) =>
+    (conversation.title ?? 'New conversation')
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+  const isMultiline = draft.includes('\n');
+  const submit = () => {
+    const text = draft.trim();
+    if (!text || state.sending || !viewVisible || needsHead) return;
     setDraft('');
-    setSearch('');
-    setSearching(false);
-    setTranscriptStatus('idle');
-    setSubmittedPrompt('');
-    setAssistantText('');
-    setMessageActionsVisible(false);
-    setRecentTitle(null);
-    setAttachmentReady(false);
-    setPreviousTurns([]);
-    setActiveTurnId('');
-    setSelectedGraphNodeId(null);
-    setGraphNotice('');
-    nextTurnNumber.current = 0;
-    activeTurnIdRef.current = '';
-    clearActionRevealTimers();
-    transcriptScrollRef.current?.scrollTo({ top: 0 });
-    inputRef.current?.focus();
-  }
-  function submitDraft() {
-    const prompt = draft.trim();
-    if (!prompt || transcriptStatus === 'thinking' || transcriptStatus === 'streaming') return;
-    const isFirstTurn = transcriptStatus === 'idle';
-    if (!isFirstTurn && submittedPrompt && (transcriptStatus === 'completed' || transcriptStatus === 'stopped' || transcriptStatus === 'error')) {
-      setPreviousTurns(turns => [...turns, { id: activeTurnId, prompt: submittedPrompt, assistantText, status: transcriptStatus, messageActionsVisible }]);
-    } else if (isFirstTurn) {
-      window.history.pushState({}, '', `/c/${MOCK_CONVERSATION_ID}`);
-    }
-    nextTurnNumber.current += 1;
-    const nextTurnId = `turn-${nextTurnNumber.current}`;
-    activeTurnIdRef.current = nextTurnId;
-    setActiveTurnId(nextTurnId);
-    setSubmittedPrompt(prompt);
-    setDraft('');
-    setAssistantText('');
-    setMessageActionsVisible(false);
-    setTranscriptStatus(isFirstTurn ? 'validating' : 'thinking');
-  }
-  function stopResponse() {
-    if (transcriptStatus !== 'thinking' && transcriptStatus !== 'streaming') return;
-    setTranscriptStatus('stopped');
-  }
-  useEffect(() => {
-    if (!rightPanelOpen) return;
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setRightPanelOpen(false);
-    }
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [rightPanelOpen]);
+    const reasoning: ReasoningRequest = {
+      effort: reasoningEffort?.toLowerCase() ?? 'high',
+    };
+    void hosted.sendMessage(text, reasoning);
+  };
+
   useEffect(() => {
     if (!isResizingRightPanel) return;
-    function handlePointerMove(event: PointerEvent) {
-      const resizeState = rightPanelResizeRef.current;
-      if (!resizeState) return;
-      const nextWidth = resizeState.startWidth + resizeState.startX - event.clientX;
-      setRightPanelWidth(Math.min(RIGHT_PANEL_MAX_WIDTH, Math.max(RIGHT_PANEL_MIN_WIDTH, nextWidth)));
-    }
-    function stopResizing() {
-      rightPanelResizeRef.current = null;
+    const move = (event: PointerEvent) => {
+      const current = resize.current;
+      if (current)
+        setRightPanelWidth(
+          Math.min(
+            RIGHT_PANEL_MAX_WIDTH,
+            Math.max(
+              RIGHT_PANEL_MIN_WIDTH,
+              current.startWidth + current.startX - event.clientX,
+            ),
+          ),
+        );
+    };
+    const stop = () => {
+      resize.current = null;
       setIsResizingRightPanel(false);
-    }
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', stopResizing);
-    window.addEventListener('pointercancel', stopResizing);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', stopResizing);
-      window.removeEventListener('pointercancel', stopResizing);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
     };
   }, [isResizingRightPanel]);
   useEffect(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
-    const maxTextareaHeight = 360;
     textarea.style.height = '0px';
-    const nextHeight = Math.min(textarea.scrollHeight, maxTextareaHeight);
-    textarea.style.height = `${nextHeight}px`;
-    textarea.style.overflowY = textarea.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 360)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 360 ? 'auto' : 'hidden';
   }, [draft]);
   useEffect(() => {
     if (!transcriptStarted) return;
-    const frame = window.requestAnimationFrame(() => {
-      const transcript = transcriptScrollRef.current;
-      if (transcript) transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
-    });
+    const frame = window.requestAnimationFrame(() =>
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      }),
+    );
     return () => window.cancelAnimationFrame(frame);
-  }, [transcriptStarted, renderedTranscriptTurns.length, transcriptStatus, messageActionsVisible]);
-  useEffect(() => () => clearActionRevealTimers(), []);
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    let interval: ReturnType<typeof setInterval> | undefined;
-    if (transcriptStatus === 'validating') {
-      timeout = setTimeout(() => setTranscriptStatus('thinking'), 450);
-    } else if (transcriptStatus === 'thinking') {
-      timeout = setTimeout(() => setTranscriptStatus('streaming'), 750);
-    } else if (transcriptStatus === 'streaming') {
-      let nextCharacter = 0;
-      interval = setInterval(() => {
-        nextCharacter += 1;
-        setAssistantText(MOCK_RESPONSE.slice(0, nextCharacter));
-        if (nextCharacter >= MOCK_RESPONSE.length) {
-          clearInterval(interval);
-          setRecentTitle(title => title ?? 'Greeting exchange');
-          setTranscriptStatus('completed');
-        }
-      }, 30);
-    } else if (transcriptStatus === 'completed') {
-      scheduleActionReveal(activeTurnId);
-    }
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      if (interval) clearInterval(interval);
-    };
-  }, [transcriptStatus]);
-  return <>
-    <Sidebar className={`reference-sidebar ${open ? 'sidebar-expanded' : 'sidebar-collapsed'}`} collapsible="offcanvas">
-      <header className="sidebar-header">
-        <button className="brand-toggle" aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'} onClick={toggleSidebar} title={open ? 'Collapse sidebar' : 'Expand sidebar'}><Bot className="brand-logo" /><PanelLeft className="brand-toggle-icon" /></button>
-        <span className="wordmark">Windie</span>
-        <button className="icon-button sidebar-search expanded-only" aria-label="Search recent chats" aria-expanded={searching} onClick={() => setSearching(!searching)} title="Search chats"><Search /></button>
-        <button className="icon-button expanded-only" aria-label="Collapse sidebar" onClick={toggleSidebar} title="Collapse sidebar"><PanelLeft /></button>
-      </header>
-      <div className="sidebar-scroll sidebar-expanded-content">
-        <nav aria-label="Main navigation" className="navigation">
-          <button className="nav-item selected" onClick={newChat}><DiamondPlus /><span>New chat</span></button>
-          <button className="nav-item" aria-disabled="true" title="Wakeups — design preview"><Bell /><span>Wakeups</span></button>
-          <button className="nav-item" aria-disabled="true" title="Computers — design preview"><Monitor /><span>Computers</span></button>
-          <button className="nav-item" aria-disabled="true" title="Talents — design preview"><UsersRound /><span>Talents</span></button>
-        </nav>
-        <section className="recents" aria-labelledby="recents-heading">
-          <h2 id="recents-heading" className="font-mono">Recents</h2>
-          {searching && <input className="history-search font-mono" autoFocus aria-label="Search recent chats" placeholder="Search chats" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setSearching(false); setSearch(''); } }} />}
-          {submittedPrompt && <button className="recent-item font-mono active-recent" aria-current="page" title={recentTitle ?? submittedPrompt}>{recentTitle ?? submittedPrompt}</button>}
-          {recents.filter(label => label.toLowerCase().includes(search.toLowerCase())).map(label => <button className="recent-item font-mono" key={label} aria-disabled="true" title={label + ' — design preview'}>{label}</button>)}
-          {searching && !recents.some(label => label.toLowerCase().includes(search.toLowerCase())) && <p className="no-results">No chats found</p>}
-        </section>
-      </div>
-      <footer className="profile-footer">
-        <button className="profile" aria-label="g p, Free account" aria-disabled="true" title={open ? 'Account — design preview' : undefined}><span className="avatar">PP</span><span className="profile-copy"><span>g p</span><small className="font-mono">Free</small></span></button>
-        <button className="icon-button" aria-label="Gifts" aria-disabled="true" title="Gifts — design preview"><Gift /></button>
-      </footer>
-    </Sidebar>
-    <div className="workspace-shell">
-      <button className="icon-button right-panel" aria-label={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'} aria-expanded={rightPanelOpen} onClick={() => setRightPanelOpen(!rightPanelOpen)} title={rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'}><PanelRight /></button>
-      <div className="workspace-body">
-        <main className={`chat-canvas ${transcriptStarted ? 'has-transcript' : ''}`}>
-          <button className="icon-button reopen-sidebar" aria-label="Open sidebar" onClick={toggleSidebar}><PanelLeft /></button>
-          <div ref={transcriptScrollRef} className="transcript-scroll">
-            <section className={`transcript ${transcriptStarted ? 'is-visible' : ''}`} aria-live="polite">
-              {renderedTranscriptTurns.map(turn => <TranscriptTurn key={turn.id} {...turn} />)}
-            </section>
-          </div>
-          <section className={`prompt-area ${transcriptStarted ? 'conversation-composer' : ''} ${attachmentReady ? 'has-attachment' : ''}`} aria-labelledby="prompt-heading">
-            {!transcriptStarted && <h1 id="prompt-heading">What’s on your mind today?</h1>}
-            {attachmentReady && <div className="attachment-preview"><span>mock-notes.pdf</span><button onClick={() => setAttachmentReady(false)} aria-label="Remove attachment"><X /></button></div>}
-            <div className={`composer ${isMultiline ? 'is-multiline' : ''}`}>
-              <div className="composer-controls">
-                <button className="icon-button attachment-button" aria-label="Add attachment" onClick={() => setAttachmentReady(true)} title="Add mock attachment"><Plus /></button>
-                <Select defaultValue="High">
-                  <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
-                  <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
-                </Select>
-                {transcriptStatus === 'thinking' || transcriptStatus === 'streaming'
-                  ? <button className="send-button stop-button" aria-label="Stop response" onClick={stopResponse} title="Stop response"><Square /></button>
-                  : draft.trim()
-                    ? <button className="send-button" aria-label="Send message" onClick={submitDraft} title="Send message"><ArrowUp /></button>
-                    : <button className="voice-button" aria-label="Start voice mode" aria-disabled="true" title="Voice — design preview"><AudioLines /></button>}
-              </div>
-              <textarea ref={inputRef} rows={1} aria-label="Ask Windie" aria-describedby="preview-description" placeholder="Ask Windie" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDraft(); } }} />
-            </div>
-            <p id="preview-description" className="sr-only">Standalone design preview. This transcript uses local mock states; messaging, voice, attachments, and account services are not connected.</p>
-          </section>
-        </main>
-        <aside className={`right-sidebar ${rightPanelOpen ? 'is-open' : ''} ${isResizingRightPanel ? 'is-resizing' : ''}`} style={{ '--right-panel-width': `${rightPanelWidth}px` } as CSSProperties} aria-label={dockView === 'graph' ? 'Conversation graph' : 'Tools panel'} aria-hidden={!rightPanelOpen}>
-          <div
-            className="right-sidebar-resize-handle"
-            role="separator"
-            aria-label="Resize tools panel"
-            aria-orientation="vertical"
-            aria-valuemin={RIGHT_PANEL_MIN_WIDTH}
-            aria-valuemax={RIGHT_PANEL_MAX_WIDTH}
-            aria-valuenow={rightPanelWidth}
-            tabIndex={rightPanelOpen ? 0 : -1}
-            onPointerDown={event => {
-              if (event.button !== 0) return;
-              event.preventDefault();
-              rightPanelResizeRef.current = { startX: event.clientX, startWidth: rightPanelWidth };
-              setIsResizingRightPanel(true);
-            }}
-            onKeyDown={event => {
-              const step = event.shiftKey ? 40 : 10;
-              if (event.key === 'ArrowLeft') {
-                event.preventDefault();
-                setRightPanelWidth(width => Math.min(RIGHT_PANEL_MAX_WIDTH, width + step));
-              } else if (event.key === 'ArrowRight') {
-                event.preventDefault();
-                setRightPanelWidth(width => Math.max(RIGHT_PANEL_MIN_WIDTH, width - step));
-              } else if (event.key === 'Home') {
-                event.preventDefault();
-                setRightPanelWidth(RIGHT_PANEL_MIN_WIDTH);
-              } else if (event.key === 'End') {
-                event.preventDefault();
-                setRightPanelWidth(RIGHT_PANEL_MAX_WIDTH);
-              }
-            }}
-          />
-          {dockView === 'graph'
-            ? <GraphDock
-                nodes={graphNodes}
-                selectedNodeId={activeGraphNodeId}
-                onSelectNode={nodeId => { setSelectedGraphNodeId(nodeId); setGraphNotice(''); }}
-                onBack={() => { setDockView('tools'); setGraphNotice(''); }}
-                onOpenMessage={node => {
-                  setSelectedGraphNodeId(node.id);
-                  document.querySelector<HTMLElement>(`[data-turn-id="${node.turnId}"][data-message-role="${node.role}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  setRightPanelOpen(false);
-                }}
-                onBranch={node => {
-                  setSelectedGraphNodeId(node.id);
-                  setGraphNotice(`Branching from ${node.role === 'user' ? 'your message' : 'Windie’s response'} is a preview for now.`);
+  }, [
+    pathMessages.length,
+    state.pendingUserText,
+    state.streamingText,
+    transcriptStarted,
+  ]);
+
+  return (
+    <>
+      <Sidebar
+        className={`reference-sidebar ${open ? 'sidebar-expanded' : 'sidebar-collapsed'}`}
+        collapsible="offcanvas"
+      >
+        <header className="sidebar-header">
+          <button
+            className="brand-toggle"
+            aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
+            onClick={toggleSidebar}
+          >
+            <Bot className="brand-logo" />
+            <PanelLeft className="brand-toggle-icon" />
+          </button>
+          <span className="wordmark">Windie</span>
+          <button
+            className="icon-button sidebar-search expanded-only"
+            aria-label="Search recent chats"
+            aria-expanded={searching}
+            onClick={() => setSearching(!searching)}
+          >
+            <Search />
+          </button>
+          <button
+            className="icon-button expanded-only"
+            aria-label="Collapse sidebar"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft />
+          </button>
+        </header>
+        <div className="sidebar-scroll sidebar-expanded-content">
+          <nav aria-label="Main navigation" className="navigation">
+            <button
+              className="nav-item selected"
+              onClick={() => {
+                setDraft('');
+                navigateToNewChat();
+                void hosted.startNewChat();
+              }}
+            >
+              <DiamondPlus />
+              <span>New chat</span>
+            </button>
+            <button
+              className="nav-item"
+              disabled
+              title="Wakeups are not available yet"
+            >
+              <Bell />
+              <span>Wakeups</span>
+            </button>
+            <button
+              className="nav-item"
+              disabled
+              title="Computers are not available yet"
+            >
+              <Monitor />
+              <span>Computers</span>
+            </button>
+            <button
+              className="nav-item"
+              disabled
+              title="Talents are not available yet"
+            >
+              <UsersRound />
+              <span>Talents</span>
+            </button>
+          </nav>
+          <section className="recents" aria-labelledby="recents-heading">
+            <h2 id="recents-heading" className="font-mono">
+              Recents
+            </h2>
+            {searching && (
+              <input
+                className="history-search font-mono"
+                aria-label="Search recent chats"
+                placeholder="Search chats"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    setSearching(false);
+                    setSearch('');
+                  }
                 }}
               />
-            : <nav className="right-sidebar-menu" aria-label="Tools">
-                <button className="right-sidebar-item" aria-disabled="true" title="Review — design preview"><ClipboardCheck /><span>Review</span><kbd>Ctrl+Shift+G</kbd></button>
-                <button className="right-sidebar-item" onClick={() => { setDockView('graph'); setRightPanelOpen(true); }} title="Open conversation graph"><GitBranch /><span>Graph</span><kbd>Ctrl+`</kbd></button>
-                <button className="right-sidebar-item" aria-disabled="true" title="Browser — design preview"><Globe2 /><span>Browser</span><kbd>Ctrl+T</kbd></button>
-                <button className="right-sidebar-item" aria-disabled="true" title="Files — design preview"><Files /><span>Files</span><kbd>Ctrl+P</kbd></button>
-                <button className="right-sidebar-item" aria-disabled="true" title="Side chat — design preview"><MessageCircle /><span>Side chat</span><kbd>Ctrl+Alt+S</kbd></button>
-              </nav>}
-          {graphNotice && <p className="graph-notice" role="status">{graphNotice}</p>}
-        </aside>
+            )}
+            {conversations.map((conversation) => (
+              <button
+                className={`recent-item font-mono ${conversation.id === state.activeConversation?.id ? 'active-recent' : ''}`}
+                key={conversation.id}
+                onClick={() => navigateToConversation(conversation.id)}
+                aria-current={
+                  conversation.id === state.activeConversation?.id
+                    ? 'page'
+                    : undefined
+                }
+              >
+                {conversation.title ?? 'New conversation'}
+              </button>
+            ))}
+            {state.initialized && conversations.length === 0 && (
+              <p className="no-results">No chats found</p>
+            )}
+          </section>
+        </div>
+        <footer className="profile-footer">
+          <button
+            className="profile"
+            aria-label="Sign out"
+            onClick={onSignOut}
+            title={email ?? 'Sign out'}
+          >
+            <span className="avatar">
+              {(email?.slice(0, 2) ?? 'WI').toUpperCase()}
+            </span>
+            <span className="profile-copy">
+              <span>{email ?? 'Windie account'}</span>
+              <small className="font-mono">Sign out</small>
+            </span>
+          </button>
+          <button className="icon-button" disabled aria-label="Gifts">
+            <Gift />
+          </button>
+        </footer>
+      </Sidebar>
+      <div className="workspace-shell">
+        <button
+          className="icon-button right-panel"
+          aria-label={
+            rightPanelOpen ? 'Collapse tools panel' : 'Expand tools panel'
+          }
+          aria-expanded={rightPanelOpen}
+          onClick={() => setRightPanelOpen(!rightPanelOpen)}
+        >
+          <PanelRight />
+        </button>
+        <div className="workspace-body">
+          <main
+            className={`chat-canvas ${transcriptStarted ? 'has-transcript' : ''}`}
+          >
+            <button
+              className="icon-button reopen-sidebar"
+              aria-label="Open sidebar"
+              onClick={toggleSidebar}
+            >
+              <PanelLeft />
+            </button>
+            {!viewVisible &&
+              state.routeId === requestedConversationId &&
+              state.routeStatus === 'error' && (
+                <p className="turn-status is-error" role="alert">
+                  {state.error}
+                </p>
+              )}
+            {viewVisible && (
+              <>
+                {!transcriptStarted && state.error && (
+                  <p className="turn-status is-error" role="alert">
+                    {state.error}
+                  </p>
+                )}
+                <div ref={scrollRef} className="transcript-scroll">
+                  <section
+                    className={`transcript ${transcriptStarted ? 'is-visible' : ''}`}
+                    aria-live="polite"
+                  >
+                    {needsHead && (
+                      <div className="turn-status">
+                        <p>
+                          This conversation has multiple branches. Choose a
+                          message head to open:
+                        </p>
+                        {branchHeads.map((id) => (
+                          <button
+                            key={id}
+                            onClick={() => void hosted.selectHead(id)}
+                          >
+                            {state.activeConversation?.messages
+                              .find((message) => message.id === id)
+                              ?.content.slice(0, 80) || id}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {transcriptRows(state).map(
+                      ({ key, message, streaming }) => (
+                        <TranscriptMessage
+                          key={key}
+                          message={message}
+                          streaming={streaming}
+                        />
+                      ),
+                    )}
+                    {transcriptStarted && state.error && (
+                      <p className="turn-status is-error" role="alert">
+                        {state.error}
+                      </p>
+                    )}
+                  </section>
+                </div>
+                <section
+                  className={`prompt-area ${transcriptStarted ? 'conversation-composer' : ''}`}
+                  aria-labelledby="prompt-heading"
+                >
+                  {!transcriptStarted && (
+                    <h1 id="prompt-heading">What’s on your mind today?</h1>
+                  )}
+                  <div
+                    className={`composer ${isMultiline ? 'is-multiline' : ''}`}
+                  >
+                    <div className="composer-controls">
+                      <button
+                        className="icon-button attachment-button"
+                        disabled
+                        aria-label="Add attachment"
+                        title="Attachments are not available yet"
+                      >
+                        <Plus />
+                      </button>
+                      <Select
+                        value={reasoningEffort}
+                        onValueChange={setReasoningEffort}
+                      >
+                        <SelectTrigger
+                          className="effort-select font-mono"
+                          aria-label="Reasoning effort"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          align="end"
+                          alignItemWithTrigger={false}
+                          className="effort-menu"
+                        >
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {state.sending ? (
+                        <button
+                          className="send-button stop-button"
+                          aria-label="Stop response"
+                          onClick={() => void hosted.stop()}
+                        >
+                          <Square />
+                        </button>
+                      ) : draft.trim() ? (
+                        <button
+                          className="send-button"
+                          aria-label="Send message"
+                          disabled={needsHead}
+                          onClick={submit}
+                        >
+                          <ArrowUp />
+                        </button>
+                      ) : (
+                        <button
+                          className="voice-button"
+                          disabled
+                          aria-label="Start voice mode"
+                          title="Voice is not available yet"
+                        >
+                          <AudioLines />
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      ref={inputRef}
+                      rows={1}
+                      aria-label="Ask Windie"
+                      placeholder="Ask Windie"
+                      value={draft}
+                      disabled={state.sending || needsHead}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          submit();
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="sr-only">
+                    Your messages are sent to your authenticated hosted Windie
+                    account.
+                  </p>
+                </section>
+              </>
+            )}
+          </main>
+          <aside
+            className={`right-sidebar ${rightPanelOpen ? 'is-open' : ''} ${isResizingRightPanel ? 'is-resizing' : ''}`}
+            style={
+              { '--right-panel-width': `${rightPanelWidth}px` } as CSSProperties
+            }
+            aria-label={
+              dockView === 'graph' ? 'Conversation graph' : 'Tools panel'
+            }
+            aria-hidden={!rightPanelOpen}
+          >
+            <button
+              type="button"
+              className="right-sidebar-resize-handle"
+              aria-label="Resize tools panel"
+              tabIndex={rightPanelOpen ? 0 : -1}
+              onPointerDown={(event) => {
+                if (event.button === 0) {
+                  event.preventDefault();
+                  resize.current = {
+                    startX: event.clientX,
+                    startWidth: rightPanelWidth,
+                  };
+                  setIsResizingRightPanel(true);
+                }
+              }}
+              onKeyDown={(event) => {
+                const step = event.shiftKey ? 40 : 10;
+                if (event.key === 'ArrowLeft') {
+                  event.preventDefault();
+                  setRightPanelWidth((width) =>
+                    Math.min(RIGHT_PANEL_MAX_WIDTH, width + step),
+                  );
+                } else if (event.key === 'ArrowRight') {
+                  event.preventDefault();
+                  setRightPanelWidth((width) =>
+                    Math.max(RIGHT_PANEL_MIN_WIDTH, width - step),
+                  );
+                }
+              }}
+            />
+            {dockView === 'graph' ? (
+              <GraphDock
+                nodes={graphNodes}
+                selectedNodeId={activeGraphNodeId}
+                onSelectNode={(nodeId) => {
+                  setSelectedGraphNodeId(nodeId);
+                  void hosted.selectHead(nodeId);
+                }}
+                onBack={() => setDockView('tools')}
+                onOpenMessage={(node) => {
+                  document
+                    .querySelector<HTMLElement>(
+                      `[data-message-id="${node.id}"]`,
+                    )
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setRightPanelOpen(false);
+                }}
+              />
+            ) : (
+              <nav className="right-sidebar-menu" aria-label="Tools">
+                <button className="right-sidebar-item" disabled>
+                  <ClipboardCheck />
+                  <span>Review</span>
+                  <kbd>Ctrl+Shift+G</kbd>
+                </button>
+                <button
+                  className="right-sidebar-item"
+                  onClick={() => {
+                    setDockView('graph');
+                    setRightPanelOpen(true);
+                  }}
+                >
+                  <GitBranch />
+                  <span>Graph</span>
+                  <kbd>Ctrl+`</kbd>
+                </button>
+                <button className="right-sidebar-item" disabled>
+                  <Globe2 />
+                  <span>Browser</span>
+                  <kbd>Ctrl+T</kbd>
+                </button>
+                <button className="right-sidebar-item" disabled>
+                  <Files />
+                  <span>Files</span>
+                  <kbd>Ctrl+P</kbd>
+                </button>
+                <button className="right-sidebar-item" disabled>
+                  <MessageCircle />
+                  <span>Side chat</span>
+                  <kbd>Ctrl+Alt+S</kbd>
+                </button>
+              </nav>
+            )}
+          </aside>
+        </div>
       </div>
-    </div>
-  </>;
+    </>
+  );
 }
-export default function Home() { return <SidebarProvider style={{ '--sidebar-width': '242px', '--sidebar-width-icon': '52px' } as CSSProperties}><ChatScreen /></SidebarProvider>; }
+
+function AuthScreen() {
+  const auth = useHostedAuth();
+  if (!hostedApiConfigured())
+    return (
+      <main className="auth-screen">
+        <section>
+          <Bot className="brand-logo" />
+          <h1>Windie is not configured</h1>
+          <p>
+            This deployment needs its hosted API URL before it can connect to
+            your conversations.
+          </p>
+        </section>
+      </main>
+    );
+  if (auth.isLoading)
+    return (
+      <main className="auth-screen">
+        <section>
+          <LoaderCircle className="spin" />
+          <p>Loading your Windie account…</p>
+        </section>
+      </main>
+    );
+  if (auth.configurationError)
+    return (
+      <main className="auth-screen">
+        <section>
+          <Bot className="brand-logo" />
+          <h1>Windie sign-in is not configured</h1>
+          <p>{auth.configurationError}</p>
+        </section>
+      </main>
+    );
+  if (!auth.session)
+    return (
+      <main className="auth-screen">
+        <section>
+          <Bot className="brand-logo" />
+          <h1>Windie</h1>
+          <p>Sign in to open your hosted conversations.</p>
+          <button
+            className="send-button auth-button"
+            onClick={() => void auth.signInWithGoogle()}
+            disabled={auth.isSigningIn}
+          >
+            {auth.isSigningIn ? 'Opening Google…' : 'Continue with Google'}
+          </button>
+          {auth.error && <p className="turn-status is-error">{auth.error}</p>}
+        </section>
+      </main>
+    );
+  return (
+    <ChatScreen
+      key={auth.session.user.id}
+      accessToken={auth.session.access_token}
+      email={auth.session.user.email ?? null}
+      onSignOut={() => void auth.signOut()}
+    />
+  );
+}
+
+export default function Home() {
+  return (
+    <SidebarProvider
+      style={
+        {
+          '--sidebar-width': '242px',
+          '--sidebar-width-icon': '52px',
+        } as CSSProperties
+      }
+    >
+      <AuthScreen />
+    </SidebarProvider>
+  );
+}
