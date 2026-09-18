@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Bell, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift, ClipboardCheck, TerminalSquare, Globe2, Files, MessageCircle, Bot, ArrowUp, Copy, Ellipsis, GitBranch, LoaderCircle, RotateCcw, Share, Square, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Bell, ChevronLeft, Monitor, UsersRound, DiamondPlus, Search, PanelLeft, PanelRight, Plus, AudioLines, Gift, ClipboardCheck, Globe2, Files, MessageCircle, Bot, ArrowUp, Copy, Ellipsis, GitBranch, LoaderCircle, RotateCcw, Share, Square, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { Sidebar, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -26,6 +26,15 @@ type RenderedTranscriptTurn = Omit<StoredTranscriptTurn, 'status'> & {
   status: Exclude<TranscriptStatus, 'idle'>;
 };
 
+type DockView = 'tools' | 'graph';
+
+type GraphNode = {
+  id: string;
+  turnId: string;
+  role: 'user' | 'assistant';
+  preview: string;
+};
+
 function BranchAffordance() {
   return <button className="branch-affordance" aria-disabled="true" title="Branching — transcript preview"><GitBranch /><span>Branch</span></button>;
 }
@@ -34,15 +43,10 @@ function AssistantActions({ visible }: { visible: boolean }) {
   return <div className={`message-actions ${visible ? 'is-visible' : ''}`} aria-label="Assistant message actions" aria-hidden={!visible}><button aria-label="Copy response"><Copy /></button><button aria-label="Good response"><ThumbsUp /></button><button aria-label="Bad response"><ThumbsDown /></button><button aria-label="Share response"><Share /></button><button aria-label="Regenerate response"><RotateCcw /></button><button aria-label="More response actions"><Ellipsis /></button></div>;
 }
 
-function TranscriptTurn({ prompt, assistantText, status, messageActionsVisible }: {
-  prompt: string;
-  assistantText: string;
-  status: Exclude<TranscriptStatus, 'idle'>;
-  messageActionsVisible: boolean;
-}) {
+function TranscriptTurn({ id, prompt, assistantText, status, messageActionsVisible }: RenderedTranscriptTurn) {
   return <>
-    {status !== 'validating' && <article className="message-row user-message"><div className="message-bubble">{prompt}</div><BranchAffordance /></article>}
-    {(status === 'thinking' || status === 'streaming' || status === 'completed' || status === 'stopped' || status === 'error') && <article className="message-row assistant-message">
+    {status !== 'validating' && <article className="message-row user-message" data-turn-id={id} data-message-role="user"><div className="message-bubble">{prompt}</div><BranchAffordance /></article>}
+    {(status === 'thinking' || status === 'streaming' || status === 'completed' || status === 'stopped' || status === 'error') && <article className="message-row assistant-message" data-turn-id={id} data-message-role="assistant">
       {status === 'thinking' && <p className="thinking-status"><LoaderCircle /> Thinking</p>}
       {status === 'streaming' && <p className="assistant-copy">{assistantText}<span className="stream-caret" /></p>}
       {status === 'completed' && <p className="assistant-copy">{assistantText}</p>}
@@ -53,12 +57,61 @@ function TranscriptTurn({ prompt, assistantText, status, messageActionsVisible }
   </>;
 }
 
+function GraphDock({ nodes, selectedNodeId, onSelectNode, onBack, onOpenMessage, onBranch }: {
+  nodes: GraphNode[];
+  selectedNodeId: string | null;
+  onSelectNode: (nodeId: string) => void;
+  onBack: () => void;
+  onOpenMessage: (node: GraphNode) => void;
+  onBranch: (node: GraphNode) => void;
+}) {
+  const selectedNode = nodes.find(node => node.id === selectedNodeId) ?? nodes.at(-1) ?? null;
+
+  return <section className="graph-dock" aria-label="Conversation graph">
+    <header className="graph-dock-header">
+      <button className="graph-back" onClick={onBack}><ChevronLeft /><span>Tools</span></button>
+      <span className="graph-title"><GitBranch />Graph</span>
+    </header>
+    {nodes.length === 0
+      ? <div className="graph-empty"><GitBranch /><strong>Nothing to map yet</strong><span>Send a message to start this conversation’s graph.</span></div>
+      : <>
+          <div className="graph-canvas" aria-label="Selected conversation path">
+            <p className="graph-path-label">Selected path</p>
+            <div className="graph-tree">
+              {nodes.map((node, index) => <div className="graph-tree-row" key={node.id}>
+                {index > 0 && <span className="graph-edge" aria-hidden="true" />}
+                <button
+                  className={`graph-node is-on-path ${node.id === selectedNode?.id ? 'is-selected' : ''}`}
+                  onClick={() => onSelectNode(node.id)}
+                  aria-pressed={node.id === selectedNode?.id}
+                >
+                  <span className="graph-node-role">{node.role === 'user' ? 'You' : 'Windie'}</span>
+                  <span className="graph-node-preview">{node.preview}</span>
+                </button>
+              </div>)}
+            </div>
+          </div>
+          {selectedNode && <section className="graph-inspector" aria-label="Selected graph node">
+            <p className="graph-inspector-label">Selected message</p>
+            <p className="graph-inspector-preview">{selectedNode.preview}</p>
+            <div className="graph-actions">
+              <button onClick={() => onOpenMessage(selectedNode)}>Open this message</button>
+              <button onClick={() => onBranch(selectedNode)}>Branch from here</button>
+            </div>
+          </section>}
+        </>}
+  </section>;
+}
+
 function ChatScreen() {
   const { open, isMobile, toggleSidebar } = useSidebar();
   const [draft, setDraft] = useState('');
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState('');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [dockView, setDockView] = useState<DockView>('tools');
+  const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
+  const [graphNotice, setGraphNotice] = useState('');
   const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_MIN_WIDTH);
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false);
   const [transcriptStatus, setTranscriptStatus] = useState<TranscriptStatus>('idle');
@@ -83,6 +136,19 @@ function ChatScreen() {
   const renderedTranscriptTurns: RenderedTranscriptTurn[] = activeTranscriptTurn
     ? [...previousTurns, activeTranscriptTurn]
     : previousTurns;
+  const graphNodes = useMemo<GraphNode[]>(() => renderedTranscriptTurns.flatMap(turn => {
+    const userNode: GraphNode = { id: `${turn.id}:user`, turnId: turn.id, role: 'user', preview: turn.prompt };
+    if (turn.status === 'validating') return [userNode];
+    const assistantPreview = turn.status === 'thinking'
+      ? 'Thinking…'
+      : turn.status === 'error'
+        ? 'Something went wrong.'
+        : turn.assistantText || (turn.status === 'stopped' ? 'Stopped' : 'Waiting for a response…');
+    return [userNode, { id: `${turn.id}:assistant`, turnId: turn.id, role: 'assistant', preview: assistantPreview }];
+  }), [renderedTranscriptTurns]);
+  const activeGraphNodeId = graphNodes.some(node => node.id === selectedGraphNodeId)
+    ? selectedGraphNodeId
+    : graphNodes.at(-1)?.id ?? null;
   function clearActionRevealTimers() {
     actionRevealTimers.current.forEach(timer => clearTimeout(timer));
     actionRevealTimers.current.clear();
@@ -111,6 +177,8 @@ function ChatScreen() {
     setAttachmentReady(false);
     setPreviousTurns([]);
     setActiveTurnId('');
+    setSelectedGraphNodeId(null);
+    setGraphNotice('');
     nextTurnNumber.current = 0;
     activeTurnIdRef.current = '';
     clearActionRevealTimers();
@@ -272,7 +340,7 @@ function ChatScreen() {
             <p id="preview-description" className="sr-only">Standalone design preview. This transcript uses local mock states; messaging, voice, attachments, and account services are not connected.</p>
           </section>
         </main>
-        <aside className={`right-sidebar ${rightPanelOpen ? 'is-open' : ''} ${isResizingRightPanel ? 'is-resizing' : ''}`} style={{ '--right-panel-width': `${rightPanelWidth}px` } as CSSProperties} aria-label="Tools panel" aria-hidden={!rightPanelOpen}>
+        <aside className={`right-sidebar ${rightPanelOpen ? 'is-open' : ''} ${isResizingRightPanel ? 'is-resizing' : ''}`} style={{ '--right-panel-width': `${rightPanelWidth}px` } as CSSProperties} aria-label={dockView === 'graph' ? 'Conversation graph' : 'Tools panel'} aria-hidden={!rightPanelOpen}>
           <div
             className="right-sidebar-resize-handle"
             role="separator"
@@ -305,13 +373,30 @@ function ChatScreen() {
               }
             }}
           />
-          <nav className="right-sidebar-menu" aria-label="Tools">
-            <button className="right-sidebar-item" aria-disabled="true" title="Review — design preview"><ClipboardCheck /><span>Review</span><kbd>Ctrl+Shift+G</kbd></button>
-            <button className="right-sidebar-item" aria-disabled="true" title="Terminal — design preview"><TerminalSquare /><span>Terminal</span><kbd>Ctrl+`</kbd></button>
-            <button className="right-sidebar-item" aria-disabled="true" title="Browser — design preview"><Globe2 /><span>Browser</span><kbd>Ctrl+T</kbd></button>
-            <button className="right-sidebar-item" aria-disabled="true" title="Files — design preview"><Files /><span>Files</span><kbd>Ctrl+P</kbd></button>
-            <button className="right-sidebar-item" aria-disabled="true" title="Side chat — design preview"><MessageCircle /><span>Side chat</span><kbd>Ctrl+Alt+S</kbd></button>
-          </nav>
+          {dockView === 'graph'
+            ? <GraphDock
+                nodes={graphNodes}
+                selectedNodeId={activeGraphNodeId}
+                onSelectNode={nodeId => { setSelectedGraphNodeId(nodeId); setGraphNotice(''); }}
+                onBack={() => { setDockView('tools'); setGraphNotice(''); }}
+                onOpenMessage={node => {
+                  setSelectedGraphNodeId(node.id);
+                  document.querySelector<HTMLElement>(`[data-turn-id="${node.turnId}"][data-message-role="${node.role}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setRightPanelOpen(false);
+                }}
+                onBranch={node => {
+                  setSelectedGraphNodeId(node.id);
+                  setGraphNotice(`Branching from ${node.role === 'user' ? 'your message' : 'Windie’s response'} is a preview for now.`);
+                }}
+              />
+            : <nav className="right-sidebar-menu" aria-label="Tools">
+                <button className="right-sidebar-item" aria-disabled="true" title="Review — design preview"><ClipboardCheck /><span>Review</span><kbd>Ctrl+Shift+G</kbd></button>
+                <button className="right-sidebar-item" onClick={() => { setDockView('graph'); setRightPanelOpen(true); }} title="Open conversation graph"><GitBranch /><span>Graph</span><kbd>Ctrl+`</kbd></button>
+                <button className="right-sidebar-item" aria-disabled="true" title="Browser — design preview"><Globe2 /><span>Browser</span><kbd>Ctrl+T</kbd></button>
+                <button className="right-sidebar-item" aria-disabled="true" title="Files — design preview"><Files /><span>Files</span><kbd>Ctrl+P</kbd></button>
+                <button className="right-sidebar-item" aria-disabled="true" title="Side chat — design preview"><MessageCircle /><span>Side chat</span><kbd>Ctrl+Alt+S</kbd></button>
+              </nav>}
+          {graphNotice && <p className="graph-notice" role="status">{graphNotice}</p>}
         </aside>
       </div>
     </div>
