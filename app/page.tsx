@@ -257,17 +257,19 @@ function ChatScreen() {
             {!transcriptStarted && <h1 id="prompt-heading">What’s on your mind today?</h1>}
             {attachmentReady && <div className="attachment-preview"><span>mock-notes.pdf</span><button onClick={() => setAttachmentReady(false)} aria-label="Remove attachment"><X /></button></div>}
             <div className={`composer ${isMultiline ? 'is-multiline' : ''}`}>
-              <button className="icon-button attachment-button" aria-label="Add attachment" onClick={() => setAttachmentReady(true)} title="Add mock attachment"><Plus /></button>
+              <div className="composer-controls">
+                <button className="icon-button attachment-button" aria-label="Add attachment" onClick={() => setAttachmentReady(true)} title="Add mock attachment"><Plus /></button>
+                <Select defaultValue="High">
+                  <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
+                  <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
+                </Select>
+                {transcriptStatus === 'thinking' || transcriptStatus === 'streaming'
+                  ? <button className="send-button stop-button" aria-label="Stop response" onClick={stopResponse} title="Stop response"><Square /></button>
+                  : draft.trim()
+                    ? <button className="send-button" aria-label="Send message" onClick={submitDraft} title="Send message"><ArrowUp /></button>
+                    : <button className="voice-button" aria-label="Start voice mode" aria-disabled="true" title="Voice — design preview"><AudioLines /></button>}
+              </div>
               <textarea ref={inputRef} rows={1} aria-label="Ask Windie" aria-describedby="preview-description" placeholder="Ask Windie" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDraft(); } }} />
-              <Select defaultValue="High">
-                <SelectTrigger className="effort-select font-mono" aria-label="Reasoning effort"><SelectValue /></SelectTrigger>
-                <SelectContent align="end" alignItemWithTrigger={false} className="effort-menu"><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
-              </Select>
-              {transcriptStatus === 'thinking' || transcriptStatus === 'streaming'
-                ? <button className="send-button stop-button" aria-label="Stop response" onClick={stopResponse} title="Stop response"><Square /></button>
-                : draft.trim()
-                  ? <button className="send-button" aria-label="Send message" onClick={submitDraft} title="Send message"><ArrowUp /></button>
-                  : <button className="voice-button" aria-label="Start voice mode" aria-disabled="true" title="Voice — design preview"><AudioLines /></button>}
             </div>
             <p id="preview-description" className="sr-only">Standalone design preview. This transcript uses local mock states; messaging, voice, attachments, and account services are not connected.</p>
           </section>
