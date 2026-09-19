@@ -30,6 +30,9 @@ export function useHostedWindie(
     state,
     sendMessage: client.sendMessage,
     stop: client.stop,
+    bindDevice: client.bindDevice,
+    approveTool: client.approveTool,
+    denyTool: client.denyTool,
     selectHead: client.selectHead,
     startNewChat: () => client.navigate(null, undefined, true),
   };

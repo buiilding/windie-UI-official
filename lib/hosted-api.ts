@@ -6,6 +6,7 @@ import type {
   HostedConversation,
   HostedConversationSummary,
   HostedSession,
+  HostedToolApproval,
   QueryResponse,
   ReasoningRequest,
   SessionResponse,
@@ -170,6 +171,54 @@ export async function stopSession(
     { method: 'POST' },
   );
   return response.session;
+}
+
+/** Binds a session only after the browser explicitly chooses an owned online Mac. */
+export async function bindSessionDevice(
+  accessToken: string,
+  sessionId: string,
+  deviceId: string,
+): Promise<void> {
+  await request<null>(
+    accessToken,
+    `/v1/sessions/${encodeURIComponent(sessionId)}/device`,
+    { method: 'POST', body: JSON.stringify({ device_id: deviceId }) },
+  );
+}
+
+export async function listSessionToolApprovals(
+  accessToken: string,
+  sessionId: string,
+): Promise<HostedToolApproval[]> {
+  const response = await request<{ approvals: HostedToolApproval[] }>(
+    accessToken,
+    `/v1/sessions/${encodeURIComponent(sessionId)}/approvals`,
+  );
+  return response.approvals;
+}
+
+export async function approveSessionTool(
+  accessToken: string,
+  sessionId: string,
+  approvalId: string,
+): Promise<SessionResponse> {
+  return request<SessionResponse>(
+    accessToken,
+    `/v1/sessions/${encodeURIComponent(sessionId)}/approvals/${encodeURIComponent(approvalId)}/approve`,
+    { method: 'POST' },
+  );
+}
+
+export async function denySessionTool(
+  accessToken: string,
+  sessionId: string,
+  approvalId: string,
+): Promise<SessionResponse> {
+  return request<SessionResponse>(
+    accessToken,
+    `/v1/sessions/${encodeURIComponent(sessionId)}/approvals/${encodeURIComponent(approvalId)}/deny`,
+    { method: 'POST' },
+  );
 }
 
 /** Read the backend-owned execution head, including turns started in another browser. */

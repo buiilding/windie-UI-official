@@ -5,6 +5,7 @@ import type {
   HostedConversationSummary,
   HostedMessage,
   HostedSession,
+  HostedToolApproval,
   SessionEvent,
 } from '@/lib/hosted-types';
 
@@ -16,6 +17,8 @@ export type HostedUiState = {
   activeConversation: HostedConversation | null;
   selectedHeadId: string | null;
   activeSession: HostedSession | null;
+  boundDeviceId: string | null;
+  approvals: HostedToolApproval[];
   pendingUserText: string | null;
   streamingText: string;
   reasoningText: string;
@@ -32,6 +35,8 @@ export function initialState(): HostedUiState {
     activeConversation: null,
     selectedHeadId: null,
     activeSession: null,
+    boundDeviceId: null,
+    approvals: [],
     pendingUserText: null,
     streamingText: '',
     reasoningText: '',
@@ -151,6 +156,7 @@ export function projectSessionEvent(
     case 'completed':
     case 'cancelled':
     case 'waiting_for_approval':
+    case 'waiting_for_tool':
       return {
         ...next,
         sending: false,

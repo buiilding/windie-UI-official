@@ -9,6 +9,7 @@ import type {
   HostedAccountEvent,
   HostedConversation,
   HostedSession,
+  HostedToolApproval,
   ReasoningRequest,
   SessionEventRecord,
 } from '@/lib/hosted-types';
@@ -32,7 +33,16 @@ export type ClientDependencies = Pick<
   | 'loadSession'
   | 'hostedEventsUrl'
   | 'sessionEventsUrl'
-> & { readSse: typeof readSse };
+> &
+  Partial<
+    Pick<
+      typeof Api,
+      | 'bindSessionDevice'
+      | 'listSessionToolApprovals'
+      | 'approveSessionTool'
+      | 'denySessionTool'
+    >
+  > & { readSse: typeof readSse };
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -40,6 +50,7 @@ function errorText(error: unknown): string {
 function live(session: HostedSession): boolean {
   return (
     session.status === 'running' || session.status === 'waiting_for_approval'
+    || session.status === 'waiting_for_tool'
   );
 }
 function retry(signal: AbortSignal): Promise<void> {
@@ -184,8 +195,11 @@ export class HostedConversationClient {
     );
     this.update({
       activeSession: resolved.session,
+      boundDeviceId: resolved.bound_device_id ?? null,
       sending: live(resolved.session),
     });
+    if (resolved.session.status === 'waiting_for_approval')
+      void this.refreshApprovals(resolved.session.id, version);
     this.attachSession(
       resolved.session,
       live(resolved.session) ? resolved.event_cursor : 0,
@@ -256,7 +270,10 @@ export class HostedConversationClient {
       );
       if (!this.current(version)) return;
       accepted = true;
-      this.update({ activeSession: result.session });
+      this.update({
+        activeSession: result.session,
+        boundDeviceId: result.bound_device_id ?? null,
+      });
       this.sessionCursors.set(
         result.session.id,
         result.session.id === resolved.session.id ? resolved.event_cursor : 0,
@@ -309,6 +326,73 @@ export class HostedConversationClient {
       if (this.current(version)) this.update({ error: errorText(error) });
     }
   };
+
+  /** The selected device is a session-level, immutable v1 decision. */
+  bindDevice = async (deviceId: string) => {
+    const session = this.state.activeSession;
+    if (!this.token || !session || this.state.boundDeviceId) return;
+    const bind = this.api.bindSessionDevice;
+    if (!bind) throw new Error('Device binding is unavailable in this client.');
+    const version = this.view;
+    await bind(this.token, session.id, deviceId);
+    if (!this.current(version)) return;
+    const refreshed = await this.api.loadSession(this.token, session.id);
+    if (!this.current(version)) return;
+    this.update({
+      activeSession: refreshed.session,
+      boundDeviceId: refreshed.bound_device_id ?? null,
+      error: null,
+    });
+  };
+
+  approveTool = async (approvalId: string) => {
+    await this.decideTool(approvalId, true);
+  };
+
+  denyTool = async (approvalId: string) => {
+    await this.decideTool(approvalId, false);
+  };
+
+  private async decideTool(approvalId: string, approved: boolean) {
+    const session = this.state.activeSession;
+    if (!this.token || !session || this.sendLocked) return;
+    const decide = approved
+      ? this.api.approveSessionTool
+      : this.api.denySessionTool;
+    if (!decide) throw new Error('Tool approval is unavailable in this client.');
+    this.sendLocked = true;
+    const version = this.view;
+    try {
+      const response = await decide(this.token, session.id, approvalId);
+      if (!this.current(version)) return;
+      this.update({
+        activeSession: response.session,
+        boundDeviceId: response.bound_device_id ?? null,
+        approvals: this.state.approvals.filter((item) => item.id !== approvalId),
+        sending: live(response.session),
+        error: null,
+      });
+      this.attachSession(response.session);
+    } catch (error) {
+      if (this.current(version)) this.update({ error: errorText(error) });
+    } finally {
+      if (this.current(version)) this.sendLocked = false;
+    }
+  }
+
+  private async refreshApprovals(sessionId: string, version = this.view) {
+    if (!this.token) return;
+    const list = this.api.listSessionToolApprovals;
+    if (!list) return;
+    try {
+      const approvals: HostedToolApproval[] =
+        await list(this.token, sessionId);
+      if (this.current(version) && this.state.activeSession?.id === sessionId)
+        this.update({ approvals });
+    } catch (error) {
+      if (this.current(version)) this.update({ error: errorText(error) });
+    }
+  }
 
   private async refreshList(): Promise<number> {
     const version = ++this.listVersion;
@@ -513,9 +597,14 @@ export class HostedConversationClient {
                   );
                 }
               } else if (!(isDelta && savedAheadOfStream)) {
-                this.update(
-                  projectSessionEvent(this.state, data.event, snapshot),
+                const projected = projectSessionEvent(
+                  this.state,
+                  data.event,
+                  snapshot,
                 );
+                this.update(projected);
+                if (data.event.type === 'waiting_for_approval')
+                  void this.refreshApprovals(session.id, version);
                 if (!isDelta) savedAheadOfStream = false;
               }
               // Advance only after reconciliation succeeds. Failed hydration keeps

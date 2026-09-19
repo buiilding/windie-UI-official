@@ -16,6 +16,32 @@ export type HostedMessage = {
   role: ConversationRole;
   content: string;
   parts: HostedMessagePart[];
+  metadata?: HostedMessageMetadata;
+};
+
+/** Durable tool linkage used to reconcile an approval/result after reload. */
+export type HostedMessageMetadata = {
+  tool_call_id?: string;
+  tool_calls?: HostedToolCall[];
+  reasoning?: string;
+};
+
+export type HostedToolCall = {
+  id: string;
+  index: number;
+  name: string;
+  arguments: string;
+};
+
+export type HostedToolApproval = {
+  id: string;
+  session_id: string;
+  assistant_message_id: string;
+  tool_call_id: string;
+  tool_name: string;
+  arguments_json: string;
+  device_id: string;
+  reason: string;
 };
 
 export type HostedMessagePart =
@@ -31,6 +57,7 @@ export type HostedSessionStatus =
   | 'ready'
   | 'running'
   | 'waiting_for_approval'
+  | 'waiting_for_tool'
   | 'completed'
   | 'failed'
   | 'cancelled';
@@ -71,6 +98,7 @@ export type SessionEvent =
   | { type: 'assistant_message_saved'; message_id: string }
   | { type: 'tool_result_saved'; message_id: string }
   | { type: 'waiting_for_approval' }
+  | { type: 'waiting_for_tool'; assignment_id: string; device_id: string }
   | { type: 'completed'; message_id: string | null }
   | { type: 'failed'; error: string; causes: string[] }
   | { type: 'cancelled' };
@@ -100,12 +128,16 @@ export type ConversationResponse = {
 
 export type SessionResponse = {
   session: HostedSession;
+  /** Optional while older hosted servers roll forward. */
+  bound_device_id?: string | null;
   queue_depth: number;
   event_cursor: number;
 };
 
 export type QueryResponse = {
   session: HostedSession;
+  /** Optional while older hosted servers roll forward. */
+  bound_device_id?: string | null;
   queued: boolean;
   queue_depth: number;
   queue_id: string | null;

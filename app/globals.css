@@ -94,6 +94,20 @@ svg { width: 19px; height: 19px; stroke-width: 1.7; flex-shrink: 0; }
 .right-sidebar-item svg { width: 17px; height: 17px; color: #b8b0a4; stroke-width: 1.6; }
 .right-sidebar-item span { flex: 1; }
 .right-sidebar-item kbd { padding: 2px 7px; border: 1px solid #4a433b; border-radius: 6px; background: #403a31; color: #d7d0c5; font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 17px; white-space: nowrap; }
+.device-tool-panel { width: min(520px, calc(100% - 28px)); margin: 18px auto 0; padding: 12px; border: 1px solid #4a433b; border-radius: 10px; background: #292622; }
+.device-tool-label { margin: 0 0 7px; color: #d8c7ab; font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.device-tool-copy, .device-tool-error { margin: 0; color: #b8b0a4; font-size: 12px; line-height: 18px; }
+.device-tool-copy.is-bound { color: #d8c7ab; }
+.device-tool-error { margin-top: 8px; color: #f0b6ac; }
+.device-tool-action { width: 100%; min-height: 34px; padding: 7px 9px; border: 1px solid #725d3d; border-radius: 7px; background: #3b3228; color: #f3dfb8; font-size: 12px; text-align: left; }
+.device-tool-action:hover { border-color: #d5a85d; background: #473a2c; }
+.device-tool-choices { display: grid; gap: 6px; }
+.tool-approval { display: grid; gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #4a433b; color: #e9e1d5; font-size: 12px; }
+.tool-approval span { color: #b8b0a4; }
+.tool-approval code { max-height: 76px; overflow: auto; padding: 6px 7px; border-radius: 6px; background: #211f1d; color: #d7d0c5; font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tool-approval > div { display: flex; gap: 6px; }
+.tool-approval button { min-height: 29px; padding: 4px 9px; border: 1px solid #66533a; border-radius: 6px; background: #3b3228; color: #f0d7a7; font-size: 12px; }
+.tool-approval button:last-child { border-color: #62443e; background: #382824; color: #efb9af; }
 .graph-dock { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 12px; padding: 14px; }
 .graph-dock-header { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
 .graph-back { display: inline-flex; align-items: center; gap: 3px; padding: 4px 5px; border: 0; border-radius: 6px; background: transparent; color: #b8b0a4; font-size: 12px; }

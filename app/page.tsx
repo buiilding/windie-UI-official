@@ -52,6 +52,7 @@ import {
 import { hostedApiConfigured } from '@/lib/hosted-api';
 import { useHostedAuth } from '@/lib/hosted-auth';
 import { deviceRoute } from '@/lib/device-route';
+import { listDevices, type Device } from '@/lib/device-api';
 import { DevicesScreen } from './hosted/devices-screen';
 import type { HostedMessage, ReasoningRequest } from '@/lib/hosted-types';
 import { useHostedWindie } from './hosted/use-hosted-windie';
@@ -266,6 +267,8 @@ function ChatScreen({
     navigateToConversation,
   );
   const { state } = hosted;
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
   const viewVisible = routeIsVisible(state, requestedConversationId);
   const [draft, setDraft] = useState('');
   const [reasoningEffort, setReasoningEffort] = useState<string | null>('High');
@@ -317,6 +320,12 @@ function ChatScreen({
       .includes(search.toLowerCase()),
   );
   const isMultiline = draft.includes('\n');
+  const eligibleDevices = devices.filter(
+    (device) => device.online && !device.revoked,
+  );
+  const boundDevice = devices.find(
+    (device) => device.id === state.boundDeviceId,
+  );
   const submit = () => {
     const text = draft.trim();
     if (!text || state.sending || !viewVisible || needsHead) return;
@@ -355,6 +364,25 @@ function ChatScreen({
       window.removeEventListener('pointercancel', stop);
     };
   }, [isResizingRightPanel]);
+  useEffect(() => {
+    let active = true;
+    void listDevices(accessToken)
+      .then((rows) => {
+        if (active) {
+          setDevices(rows);
+          setDeviceError(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setDeviceError(
+            error instanceof Error ? error.message : 'Could not load computers.',
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, state.activeSession?.id]);
   useEffect(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
@@ -732,7 +760,56 @@ function ChatScreen({
                 }}
               />
             ) : (
-              <nav className="right-sidebar-menu" aria-label="Tools">
+              <>
+                <section className="device-tool-panel" aria-label="Device tools">
+                  <p className="device-tool-label">Connected Mac</p>
+                  {!state.activeSession ? (
+                    <p className="device-tool-copy">
+                      Start a conversation, then choose the Mac that may run approved tools.
+                    </p>
+                  ) : state.boundDeviceId ? (
+                    <p className="device-tool-copy is-bound">
+                      {boundDevice?.metadata.name ?? 'Connected computer'} is selected for this session.
+                    </p>
+                  ) : eligibleDevices.length === 1 ? (
+                    <button
+                      className="device-tool-action"
+                      onClick={() => void hosted.bindDevice(eligibleDevices[0].id)}
+                    >
+                      Use {eligibleDevices[0].metadata.name}
+                    </button>
+                  ) : eligibleDevices.length > 1 ? (
+                    <div className="device-tool-choices">
+                      {eligibleDevices.map((device) => (
+                        <button
+                          key={device.id}
+                          className="device-tool-action"
+                          onClick={() => void hosted.bindDevice(device.id)}
+                        >
+                          Use {device.metadata.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="device-tool-copy">No execution-enabled computer is online.</p>
+                  )}
+                  {deviceError && <p className="device-tool-error">{deviceError}</p>}
+                  {state.activeSession?.status === 'waiting_for_tool' && (
+                    <p className="device-tool-copy">Waiting for the selected Mac to return its result.</p>
+                  )}
+                  {state.approvals.map((approval) => (
+                    <article className="tool-approval" key={approval.id}>
+                      <strong>{approval.tool_name}</strong>
+                      <span>on {devices.find((device) => device.id === approval.device_id)?.metadata.name ?? 'selected Mac'}</span>
+                      <code>{approval.arguments_json}</code>
+                      <div>
+                        <button onClick={() => void hosted.approveTool(approval.id)}>Approve</button>
+                        <button onClick={() => void hosted.denyTool(approval.id)}>Deny</button>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+                <nav className="right-sidebar-menu" aria-label="Tools">
                 <button className="right-sidebar-item" disabled>
                   <ClipboardCheck />
                   <span>Review</span>
@@ -765,6 +842,7 @@ function ChatScreen({
                   <kbd>Ctrl+Alt+S</kbd>
                 </button>
               </nav>
+              </>
             )}
           </aside>
         </div>

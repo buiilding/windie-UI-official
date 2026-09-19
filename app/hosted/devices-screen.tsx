@@ -100,8 +100,9 @@ export function DevicesScreen({
         <p className="devices-eyebrow">{email ?? 'Signed-in account'}</p>
         <h1>{pairing ? 'Connect your computer' : 'Your computers'}</h1>
         <p>
-          Registration and online status only. Tools, plugin installation, and
-          remote control are not enabled.
+          Registration and online status. A hosted conversation may later ask
+          you to approve one tool on a selected online computer; plugin
+          installation and remote desktop are not enabled here.
         </p>
         {error && (
           <p role="alert" className="devices-error">
@@ -194,7 +195,8 @@ export function DevicesScreen({
                 {preview.state === 'approved' && (
                   <output>
                     Approved. Compare the account ID and confirm in your
-                    terminal, then run <code>windie agent run</code>.
+                    terminal, then run <code>windie agent run --tools</code>{' '}
+                    only when you want this computer to receive approved hosted work.
                   </output>
                 )}
                 {terminal && (
