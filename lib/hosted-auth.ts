@@ -1,6 +1,7 @@
 /** Browser Supabase session lifecycle for the official hosted Windie UI. */
 
 import { useCallback, useEffect, useState } from 'react';
+import { rememberDeviceReturn, restoreDeviceReturn } from './device-route';
 import {
   createClient,
   type Session,
@@ -40,6 +41,7 @@ export function useHostedAuth(): HostedAuthState {
     let active = true;
     void supabase.auth.getSession().then(({ data, error: restoreError }) => {
       if (!active) return;
+      if (data.session) restoreDeviceReturn();
       setSession(data.session);
       setError(restoreError ? 'Unable to restore your Windie sign-in.' : null);
       setIsLoading(false);
@@ -48,6 +50,7 @@ export function useHostedAuth(): HostedAuthState {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
+      if (nextSession) restoreDeviceReturn();
       setSession(nextSession);
       setIsSigningIn(false);
       setIsLoading(false);
@@ -62,6 +65,7 @@ export function useHostedAuth(): HostedAuthState {
     if (!supabase) return;
     setError(null);
     setIsSigningIn(true);
+    rememberDeviceReturn();
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },

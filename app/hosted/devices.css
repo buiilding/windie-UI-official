@@ -1,0 +1,92 @@
+.devices-screen {
+  min-height: 100dvh;
+  width: 100%;
+  background: #1b1916;
+  color: #e8e3d8;
+  overflow: auto;
+}
+.devices-screen header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 32px;
+  border-bottom: 1px solid #3b3730;
+  flex-wrap: wrap;
+}
+.devices-screen nav,
+.device-actions,
+.devices-input {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.devices-screen a {
+  color: #e4bf78;
+  text-decoration: none;
+}
+.devices-content {
+  max-width: 760px;
+  margin: 56px auto;
+  padding: 0 24px 48px;
+}
+.devices-content h1 {
+  font-size: 32px;
+  margin: 12px 0 20px;
+}
+.devices-content p {
+  line-height: 1.6;
+  margin: 14px 0;
+  color: #bcb4a6;
+}
+.devices-content code {
+  overflow-wrap: anywhere;
+}
+.devices-eyebrow {
+  font-size: 13px;
+}
+.devices-screen button,
+.devices-screen input {
+  padding: 10px 16px;
+  border: 1px solid #5d5140;
+  border-radius: 8px;
+  background: #302b23;
+  color: #eee5d6;
+  font: inherit;
+}
+.devices-screen button {
+  cursor: pointer;
+}
+.devices-screen button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.devices-screen :focus-visible {
+  outline: 2px solid #e4bf78;
+  outline-offset: 3px;
+}
+.devices-screen label {
+  display: block;
+  margin: 24px 0 10px;
+}
+.device-card {
+  border: 1px solid #494238;
+  border-radius: 14px;
+  padding: 24px;
+  margin: 24px 0;
+}
+.device-card h2 {
+  font-size: 20px;
+}
+.device-card h2 span {
+  font-size: 13px;
+  margin-left: 16px;
+  color: #cdb179;
+}
+.devices-content .devices-error {
+  color: #edb4a5;
+  padding: 12px;
+  background: #3f2923;
+  border-radius: 8px;
+}

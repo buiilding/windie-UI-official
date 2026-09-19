@@ -51,6 +51,8 @@ import {
 } from '@/lib/conversation-route';
 import { hostedApiConfigured } from '@/lib/hosted-api';
 import { useHostedAuth } from '@/lib/hosted-auth';
+import { deviceRoute } from '@/lib/device-route';
+import { DevicesScreen } from './hosted/devices-screen';
 import type { HostedMessage, ReasoningRequest } from '@/lib/hosted-types';
 import { useHostedWindie } from './hosted/use-hosted-windie';
 import { AuthLayout, SignInPanel } from './hosted/auth-screen';
@@ -431,8 +433,9 @@ function ChatScreen({
             </button>
             <button
               className="nav-item"
-              disabled
-              title="Computers are not available yet"
+              onClick={() => {
+                window.location.assign('/computers');
+              }}
             >
               <Monitor />
               <span>Computers</span>
@@ -772,6 +775,12 @@ function ChatScreen({
 
 function AuthScreen() {
   const auth = useHostedAuth();
+  const [path, setPath] = useState(() => window.location.pathname);
+  useEffect(() => {
+    const update = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', update);
+    return () => window.removeEventListener('popstate', update);
+  }, []);
   if (!hostedApiConfigured())
     return (
       <AuthLayout>
@@ -813,6 +822,17 @@ function AuthScreen() {
         signingIn={auth.isSigningIn}
         error={auth.error}
         onSignIn={() => void auth.signInWithGoogle()}
+      />
+    );
+  if (deviceRoute(path))
+    return (
+      <DevicesScreen
+        key={auth.session.user.id + path}
+        token={auth.session.access_token}
+        accountId={auth.session.user.id}
+        email={auth.session.user.email ?? null}
+        pairing={path === '/devices/connect'}
+        onSignOut={() => void auth.signOut()}
       />
     );
   // The account gate is not a sidebar child. The sidebar's flex layout previously

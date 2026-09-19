@@ -53,7 +53,7 @@ function idempotencyKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
-async function request<T>(
+export async function request<T>(
   accessToken: string,
   path: string,
   options: RequestInit = {},
@@ -65,6 +65,7 @@ async function request<T>(
   const response = await fetch(`${apiBase()}${path}`, {
     ...init,
     headers: requestHeaders,
+    redirect: 'error',
   });
   const text = await response.text();
   const body: unknown = text ? JSON.parse(text) : null;
