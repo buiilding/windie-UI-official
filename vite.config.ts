@@ -4,9 +4,14 @@ import tailwindcss from '@tailwindcss/postcss';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // Local dotenv files describe only this checkout's development proxy. A
+  // production deployment must take its public configuration from Vercel, not
+  // accidentally bundle a developer's `.env.local` values.
+  const envDir = mode === 'production' ? false : process.cwd();
+  const env = loadEnv(mode, envDir, '');
   return {
     plugins: [react()],
+    envDir,
     resolve: { alias: { '@': fileURLToPath(new URL('.', import.meta.url)) } },
     css: { postcss: { plugins: [tailwindcss()] } },
     // The browser talks to this Vite process during development, so its request
